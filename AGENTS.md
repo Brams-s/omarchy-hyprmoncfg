@@ -60,6 +60,7 @@ Before committing a change, run:
 node --test tests/*.test.js
 qmllint *.qml
 QT_QUICK_BACKEND=software /usr/lib/qt6/bin/qmltestrunner -platform offscreen -input tests/qml
+QT_QUICK_BACKEND=software /usr/lib/qt6/bin/qmltestrunner -platform offscreen -import tests/qml-bar/stubs -input tests/qml-bar
 omarchy plugin validate .
 git diff --check
 ```

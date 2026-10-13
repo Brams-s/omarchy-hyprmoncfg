@@ -26,3 +26,7 @@ jobs:
         env:
           QT_QUICK_BACKEND: software
         run: /usr/lib/qt6/bin/qmltestrunner -platform offscreen -input tests/qml
+      - name: Test the bar widget against shell stubs
+        env:
+          QT_QUICK_BACKEND: software
+        run: /usr/lib/qt6/bin/qmltestrunner -platform offscreen -import tests/qml-bar/stubs -input tests/qml-bar
