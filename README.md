@@ -8,7 +8,7 @@ The film animates a rebuild of the panel that is checked against real captures, 
 
 ![hyprmoncfg for Omarchy](preview.png)
 
-Version 2.7 adds Omarchy's Text size slider to the compact view and lets workspace numbers glide between displays when their plan changes. The panel draws your displays as screens on a stage, sizes itself to what it shows, and gives every setting a control that fits it. The companion TUI shares the same design, placement rules and display terminology, with native keyboard-first controls. See the [release notes](design/releases/2.7.0.md) for highlights.
+Version 2.8 lets you hide the bar icon and open the editor from your own menu, and keeps the panel expanded while you preview a layout. The panel draws your displays as screens on a stage, sizes itself to what it shows, and gives every setting a control that fits it. The companion TUI shares the same design, placement rules and display terminology, with native keyboard-first controls. See the [release notes](design/releases/2.8.0.md) for highlights.
 
 Screenshots show the actual panel with synthetic display/profile data in an isolated capture host, not a live hardware test. The preview above combines two of those renders, the compact panel and the expanded editor, over Omarchy's ristretto wallpaper.
 
