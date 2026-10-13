@@ -23,6 +23,12 @@ Item {
   property var pendingMethods: ({})
   property var pendingContexts: ({})
   property int statusRevision: 0
+  // The panel's expanded mode, held here so it survives the bar rebuild a
+  // preview triggers.
+  property bool panelExpanded: false
+  function setPanelExpanded(value) {
+    root.panelExpanded = value === true
+  }
   property string transactionId: ""
   property string profileName: ""
   property string deadline: ""

@@ -218,6 +218,19 @@ Panel {
   onPanelLayoutChanged: root.applyPanelSize(false)
   onCanvasDraggingChanged: root.applyPanelSize(false)
   onExpandedChanged: root.applyPanelSize(true)
+  // A preview rebuilds the per-monitor bars and this panel with them. Keep the
+  // expanded mode in the shell-level service and restore it from there.
+  Connections {
+    target: root
+    function onExpandedChanged() {
+      if (root.previewCoordinator && typeof root.previewCoordinator.setPanelExpanded === "function")
+        root.previewCoordinator.setPanelExpanded(root.expanded)
+    }
+  }
+  onPreviewCoordinatorChanged: root.restorePanelExpanded()
+  function restorePanelExpanded() {
+    if (root.previewCoordinator && root.previewCoordinator.panelExpanded === true) root.expanded = true
+  }
   readonly property var displayNotes: Model.displayNotes(root.backendConnected ? monitorSummaries : [])
   readonly property string hiddenDisplays: root.daemonPreview && root.daemonPreview.profile
     ? Model.hiddenProfileDisplays(root.daemonPreview.profile)
@@ -1574,6 +1587,7 @@ Panel {
   Component.onCompleted: {
     root.checkInstallation()
     root.checkTextSizeCommand()
+    root.restorePanelExpanded()
   }
   onActivePageChanged: {
     if (root.activePage === "workspaces")

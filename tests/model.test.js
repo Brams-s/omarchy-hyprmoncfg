@@ -2325,3 +2325,19 @@ test("lid-closed match reasons have labels", () => {
   assert.equal(rows[0].value, "+100   1 display built-in, kept off with the lid closed")
   assert.equal(rows[1].value, "+50   1 display built-in, turned off by the closed lid")
 })
+
+test("expanded mode survives the bar rebuild a preview triggers", () => {
+  const guard = previewGuard()
+  guard.root.setPanelExpanded(true)
+  assert.equal(guard.root.panelExpanded, true)
+  guard.root.setPanelExpanded(false)
+  assert.equal(guard.root.panelExpanded, false)
+
+  const qml = fs.readFileSync(path.join(__dirname, "..", "Panel.qml"), "utf8")
+  assert.match(qml, /root\.previewCoordinator\.setPanelExpanded\(root\.expanded\)/)
+  assert.match(qml, /onPreviewCoordinatorChanged: root\.restorePanelExpanded\(\)/)
+  assert.match(qml, /Component\.onCompleted: \{[^}]*root\.restorePanelExpanded\(\)/)
+  const panel = { expanded: false, previewCoordinator: { panelExpanded: true } }
+  panelFunction("restorePanelExpanded", panel)()
+  assert.equal(panel.expanded, true, "a rebuilt panel comes back expanded")
+})
