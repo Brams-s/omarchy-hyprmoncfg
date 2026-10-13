@@ -260,6 +260,21 @@ changes. Register panel availability through supported shell integration; fall
 back to launching the TUI when the panel is unavailable. Merely finding an Omarchy
 directory is insufficient. A late click after unplug should show current state.
 
+## Optional bar icon
+
+`showBarIcon` (default `true`) on the bar entry hides the icon for people who
+open the editor from a customized Display menu or a hotkey through
+`omarchy-shell shell summon crmne.hyprmoncfg`. Hiding collapses only the icon
+slot to zero size: the widget root and the icon button stay visible (the button
+at zero opacity) because the bar skips invisible widgets and the panel window
+cannot map from an invisible anchor. The editor, its summon route and the
+preview guard service stay loaded. Removing the bar entry instead removes the
+route to the editor. A hidden icon is skipped by the shell's numbered panel
+hotkeys and Tab switching between panels, which count only visible slots.
+Covered by `tests/baricon.test.js` and `tests/qml-bar`.
+
+TUI parity: the TUI has no bar icon; there is no companion change.
+
 ## Content-sized panel
 
 Decision, 2026-09-28 (Carmine): the panel is sized to its content instead of fixed

@@ -46,9 +46,10 @@ omarchy-shell shell summon crmne.hyprmoncfg '{}'
 Omarchy currently has no Display-menu extension slot. Use
 `omarchy plugin clone omarchy.monitor` for a user-owned menu customization,
 and add a `Layouts & profiles` action that invokes the command above through a
-QML `Process` argument array. Expose the action to both pointer and keyboard navigation. Existing brightness,
-text-size, scale and display controls remain available. The editor opens on the focused display
-and retains its normal close, repeated-open and preview behavior.
+QML `Process` argument array. Expose the action to both pointer and keyboard
+navigation. Existing brightness, text-size, scale and display controls remain
+available. The editor opens on the focused display and retains its normal
+close, repeated-open and preview behavior.
 
 ## Automatically match the right layout to the connected monitors
 
