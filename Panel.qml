@@ -1098,7 +1098,10 @@ Panel {
     if (!root.managedChecked) return
     var name = root.draftName()
     if (name === "") {
+      // The button stays clickable without a name, so say why nothing
+      // happened and put the cursor where the name goes.
       root.lastError = "Give this layout a profile name before previewing it."
+      Qt.callLater(function() { profileNameInput.forceActiveFocus() })
       return
     }
     root.lastError = ""
@@ -4420,7 +4423,6 @@ Panel {
                   selected: true
                   bordered: true
                   enabled: root.managedChecked && !root.editPending && !root.previewPending
-                    && (root.sourceProfile !== "" || String(root.saveName || "").trim() !== "")
                   foreground: root.foreground
                   fontFamily: root.fontFamily
                   onClicked: root.previewDraft()

@@ -111,7 +111,7 @@ test("new setup actions share preview guards and creation retains the draft", ()
   assert.notEqual(root.profileDefaults, root.draftProfile)
 })
 
-test("Preview & save requires a manually entered name and stays disabled while busy", () => {
+test("Preview & save asks for a missing name and stays disabled while busy", () => {
   const qml = fs.readFileSync(path.join(__dirname, "..", "Panel.qml"), "utf8")
   const save = qml.slice(qml.indexOf("id: saveDraftButton"))
   assert.match(save, /text: "Preview & save"/)
@@ -119,9 +119,8 @@ test("Preview & save requires a manually entered name and stays disabled while b
   const enabled = save.match(/enabled: ([\s\S]*?)\n\s+foreground:/)[1]
   const root = { managedChecked: true, editPending: false, previewPending: false, sourceProfile: "", saveName: "" }
   const evaluate = () => vm.runInNewContext(enabled, { root })
-  assert.equal(evaluate(), false)
-  root.saveName = "   "
-  assert.equal(evaluate(), false)
+  // Clickable without a name, so a click can say what is missing (#30).
+  assert.equal(evaluate(), true)
   root.saveName = "Laptop"
   assert.equal(evaluate(), true)
   for (const [key, value] of [["editPending", true], ["previewPending", true], ["managedChecked", false]]) {
@@ -136,8 +135,16 @@ test("Preview & save requires a manually entered name and stays disabled while b
   root.sourceProfile = ""
   root.draftName = panelFunction("draftName", root)
   root.send = () => assert.fail("unnamed layout must not reach the backend")
-  panelFunction("previewDraft", root)()
-  assert.match(root.lastError, /profile name/)
+  for (const name of ["", "   "]) {
+    root.saveName = name
+    root.lastError = ""
+    let focused = false
+    panelFunction("previewDraft", root, {
+      Qt: { callLater(callback) { callback() } },
+      profileNameInput: { forceActiveFocus() { focused = true } } })()
+    assert.match(root.lastError, /profile name/)
+    assert.equal(focused, true, "the name field takes focus")
+  }
 })
 
 test("the installed backend requirement matches the manifest and upgrade message", () => {
