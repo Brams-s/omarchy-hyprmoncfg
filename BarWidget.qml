@@ -45,6 +45,11 @@ BarWidget {
   readonly property bool showBarIcon: root.setting("showBarIcon", true) !== false
   implicitWidth: root.showBarIcon ? button.implicitWidth : 0
   implicitHeight: root.showBarIcon ? button.implicitHeight : 0
+  // The bar marks the slot of an open panel, with a minimum length when the
+  // slot gives no hint. A hidden icon leaves no slot to mark: a hint under a
+  // pixel passes the bar's "hint > 0" check and rounds to an empty mark.
+  readonly property real openPanelIndicatorWidth: root.showBarIcon ? 0 : 0.4
+  readonly property real openPanelIndicatorHeight: root.showBarIcon ? 0 : 0.4
 
   onBarChanged: injectPanel()
   onSettingsChanged: injectPanel()

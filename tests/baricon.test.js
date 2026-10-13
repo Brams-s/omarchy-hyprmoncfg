@@ -1,6 +1,7 @@
 const test = require("node:test")
 const assert = require("node:assert/strict")
 const fs = require("node:fs")
+const vm = require("node:vm")
 const path = require("node:path")
 
 const root = path.join(__dirname, "..")
@@ -69,4 +70,16 @@ test("the editor, summon route and preview service stay loaded without the icon"
   assert.deepEqual(manifest.kinds, ["bar-widget", "service"])
   assert.equal(manifest.entryPoints.service, "PreviewGuard.qml")
   assert.doesNotMatch(fs.readFileSync(path.join(root, "PreviewGuard.qml"), "utf8"), /showBarIcon/)
+})
+
+test("a hidden icon suppresses the bar's open-panel mark", () => {
+  const qml = fs.readFileSync(path.join(__dirname, "..", "BarWidget.qml"), "utf8")
+  for (const key of ["openPanelIndicatorWidth", "openPanelIndicatorHeight"]) {
+    const value = qml.match(new RegExp("property real " + key + ": (.+)"))[1]
+    const hint = showBarIcon => vm.runInNewContext(value, { root: { showBarIcon } })
+    // Omarchy's Bar.qml: a hint > 0 is used rounded; anything else falls back
+    // to a minimum length.
+    assert.equal(hint(true), 0, key + " keeps the default mark for a visible icon")
+    assert.ok(hint(false) > 0 && Math.round(hint(false)) === 0, key + " empties the mark for a hidden icon")
+  }
 })
