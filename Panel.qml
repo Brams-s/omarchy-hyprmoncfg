@@ -3393,7 +3393,7 @@ Panel {
                         width: parent.width
                         height: iccProfileInput.height
 
-                        TextField {
+                        KeyField {
                           id: iccProfileInput
                           anchors.left: parent.left
                           anchors.right: iccResetAction.visible ? iccResetAction.left : parent.right
@@ -4333,7 +4333,7 @@ Panel {
                 spacing: Style.space(9)
                 visible: root.draftDirty || root.creatingProfile || root.activePage === "profiles"
 
-                TextField {
+                KeyField {
                   id: profileNameInput
                   visible: root.creatingProfile || (root.draftDirty && root.sourceProfile === "")
                   height: editorFooter.controlHeight
@@ -4489,7 +4489,7 @@ Panel {
               font.bold: true
             }
 
-            TextField {
+            KeyField {
               id: profileExecInput
               width: parent.width
               text: root.execDraft
@@ -4717,7 +4717,7 @@ Panel {
       width: parent.width
       height: decimalInput.height
 
-      TextField {
+      KeyField {
         id: decimalInput
         anchors.left: parent.left
         anchors.right: resetAction.visible ? resetAction.left : parent.right
@@ -4726,10 +4726,10 @@ Panel {
         enabled: decimalField.enabled
         hasCursor: decimalField.hasCursor
         foreground: root.foreground
-        validator: DoubleValidator { notation: DoubleValidator.StandardNotation }
+        inputPattern: /[-+]?\d*\.?\d*/
         onEditingFinished: {
           var returnToKeyboard = activeFocus
-          var parsed = Number(text)
+          var parsed = text.trim() === "" ? NaN : Number(text)
           if (!isFinite(parsed)) text = decimalField.formatted()
           else if (text !== decimalField.formatted() && parsed !== decimalField.value)
             decimalField.modified(parsed)

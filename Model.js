@@ -1481,6 +1481,22 @@ function parseCoordinate(text) {
   return isFinite(n) && Math.abs(n) <= 20000 ? n : null
 }
 
+// A typed whole number, or null when the text is not one.
+function parseInteger(text) {
+  var s = String(text === undefined || text === null ? "" : text).trim()
+  if (!/^[-+]?\d+$/.test(s)) return null
+  var n = Number(s)
+  return isFinite(n) ? n : null
+}
+
+// `value` kept within from..to, or null when it is not a number.
+function clampInteger(value, from, to) {
+  if (value === null || value === undefined || value === "") return null
+  var n = Number(value)
+  if (!isFinite(n)) return null
+  return Math.max(from, Math.min(to, Math.round(n)))
+}
+
 // Width of one column in an N-column form grid, in whole pixels. A fractional
 // width (e.g. (340 - 7) / 2 = 166.5) puts every right-column control on a half
 // pixel; the scene graph snaps it right and its border crosses the clipping
@@ -1671,6 +1687,8 @@ if (typeof module !== "undefined") {
     placementOptions: placementOptions,
     optionsWithCurrent: optionsWithCurrent,
     parseCoordinate: parseCoordinate,
+    parseInteger: parseInteger,
+    clampInteger: clampInteger,
     gridCellWidth: gridCellWidth,
     stepScaleOption: stepScaleOption,
     compactScaleLabels: compactScaleLabels,

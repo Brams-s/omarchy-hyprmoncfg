@@ -82,6 +82,7 @@ A small background service is what watches for this. It catches hotplug, lid and
 - The expanded panel mirrors the TUI shortcuts: `1`/`2`/`3` switch pages, `a` applies, `s` saves, `r` resets, and `?` shows the contextual key guide.
 - On the layout, arrows move the selected display; `Shift`, `Ctrl`, and `Alt` preserve the TUI's fine movement and nearest-display snapping
 - Profile browsing and workspace settings use the same arrow, Enter, load, edit, and delete keys as the TUI
+- Text fields (profile name, positions, colour values, ICC path, post-apply command, workspace counts) take typing, arrows, Home/End, Backspace/Delete, `Ctrl+A` and Enter. They read the clipboard only when you paste with `Ctrl+V` or `Shift+Insert`: `wl-paste` runs for at most two seconds and the panel keeps the first 4096 bytes, as one line without control characters
 
 **Layout**
 

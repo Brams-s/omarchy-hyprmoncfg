@@ -43,15 +43,14 @@ Column {
     width: parent.width
     height: coordinateInput.height
 
-    TextField {
+    KeyField {
       id: coordinateInput
       anchors.left: parent.left
       anchors.right: resetAction.visible ? resetAction.left : parent.right
       anchors.rightMargin: resetAction.visible ? Style.spacing.xxs : 0
       text: String(root.value)
-      horizontalAlignment: TextInput.AlignRight
-      inputMethodHints: Qt.ImhFormattedNumbersOnly
-      validator: RegularExpressionValidator { regularExpression: /[-+]?\d{0,5}/ }
+      horizontalAlignment: Text.AlignRight
+      inputPattern: /[-+]?\d{0,5}/
       enabled: root.enabled
       hasCursor: root.hasCursor
       foreground: root.foreground
