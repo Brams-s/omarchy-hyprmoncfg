@@ -13,7 +13,7 @@ import "Model.js" as Model
 // The pills depend only on the mode, so stepping never changes their count. A
 // current scale that is not a preset is shown on the More trigger instead
 // (active, "1.33x"), and one that is not sharp reads "1.33x ⚠" there and
-// "Not sharp" in the SCALE header, never colour alone. It is never rewritten.
+// "Blurry" in the SCALE header, never colour alone. It is never rewritten.
 Column {
   id: root
 

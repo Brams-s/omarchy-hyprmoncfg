@@ -765,7 +765,7 @@ function scalePresets(editorDisplays, key, current, modeWidth) {
 
 // What the Scale row shows for the current scale: whether it is one of the
 // pills or sits on More, the More trigger's text, and the SCALE header's
-// detail. An unsharp scale reads "1.33x ⚠" with "Not sharp", never colour alone.
+// detail. An unsharp scale reads "1.33x ⚠" with "Blurry", never colour alone.
 function scaleRow(editorDisplays, key, current, modeWidth, modeHeight) {
   var presets = scalePresets(editorDisplays, key, current, modeWidth)
   var options = scaleOptions(editorDisplays, key, current, modeWidth, modeHeight)
@@ -779,7 +779,7 @@ function scaleRow(editorDisplays, key, current, modeWidth, modeHeight) {
     onMore: onMore,
     sharp: entry.sharp,
     moreText: onMore ? label + (entry.sharp ? "" : " ⚠") : "More",
-    detail: entry.sharp ? label : label + " ⚠ Not sharp"
+    detail: entry.sharp ? label : label + " ⚠ Blurry"
   }
 }
 
@@ -858,7 +858,7 @@ function scaleEntryFeedback(width, height, text) {
         + h + " / " + shown + " = " + Math.round(h / value) + " logical px." }] }
   }
   var lines = [{ tone: "warning",
-    text: "⚠ Not sharp: final size has fractional px (" + w + " / " + shown + " = " + (w / value).toFixed(2)
+    text: "⚠ Blurry: final size has fractional px (" + w + " / " + shown + " = " + (w / value).toFixed(2)
       + ", " + h + " / " + shown + " = " + (h / value).toFixed(2) + ")." }]
   var closest = closestSharpScale(w, h, value)
   if (closest === null) return { apply: value, sharp: false, lines: lines }

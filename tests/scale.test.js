@@ -49,7 +49,7 @@ test("More lists every sharp scale; a current scale that is not a pill shows on 
   assert.deepEqual(unsharp.presets.map(p => p.value), ["1", "1.25", "1.5", "1.6", "2", "3"], "no extra pill")
   assert.equal(unsharp.onMore, true)
   assert.equal(unsharp.moreText, "1.7x ⚠")
-  assert.equal(unsharp.detail, "1.7x ⚠ Not sharp")
+  assert.equal(unsharp.detail, "1.7x ⚠ Blurry")
   assert.equal(unsharp.sharp, false)
   const listed = unsharp.options.find(o => o.value === "1.7")
   assert.deepEqual(listed, { value: "1.7", label: "1.7x ⚠", sharp: false }, "and it is in More, marked")
@@ -105,7 +105,7 @@ test("Custom… validates like the TUI and explains sharpness the same way", () 
   const blurry = Model.scaleEntryFeedback(3840, 2160, "1.33")
   assert.equal(blurry.apply, 1.33333, "Enter applies the closest sharp scale, as in the TUI")
   assert.deepEqual(blurry.lines.map(l => l.text), [
-    "⚠ Not sharp: final size has fractional px (3840 / 1.33 = 2887.22, 2160 / 1.33 = 1624.06).",
+    "⚠ Blurry: final size has fractional px (3840 / 1.33 = 2887.22, 2160 / 1.33 = 1624.06).",
     "Closest sharp: 1.33333 -> 2880 x 1620 logical px. Enter applies it."
   ])
   const invalid = Model.scaleEntryFeedback(3840, 2160, "9")
