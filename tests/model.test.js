@@ -950,10 +950,9 @@ test("bar icon stays legible through transient daemon restarts", () => {
   assert.match(qml, /text: root\.monitorCount > 1 \? "󰍺" : "󰍹"/)
   assert.match(qml, /dimmed: root\.barIconDimmed/)
   assert.doesNotMatch(qml, /dimmed: !root\.backendConnected/)
-  assert.match(qml, /id: barDisplayGlyph/)
   assert.match(qml, /visible: root\.backendConnected/)
   assert.match(qml, /text: "󰄬"/)
-  assert.match(qml, /color: Color\.accent/)
+  assert.match(qml, /color: Commons\.Color\.accent/)
 })
 
 test("the update call to action uses a plain refresh icon", () => {

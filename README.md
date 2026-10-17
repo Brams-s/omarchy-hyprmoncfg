@@ -233,3 +233,11 @@ QT_QUICK_BACKEND=software /usr/lib/qt6/bin/qmltestrunner -platform offscreen -in
 omarchy plugin validate .
 git diff --check
 ```
+
+On an Omarchy installation, also run `bash tests/baricon-geometry.sh` to compare
+the actual bar glyph and badge against the shell's stock icon rendering. It uses
+an isolated offscreen shell and a fake panel, without contacting the monitor
+daemon or changing the desktop. Pass a shell source directory as its first
+argument to check another Omarchy version. The test covers 12, 14 and 20 px text,
+horizontal and vertical bars, one and two monitors, backend connection changes,
+and device scale factors 1, 1.25, 1.5 and 2.

@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 BarWidget {
@@ -72,31 +73,19 @@ BarWidget {
     text: root.monitorCount > 1 ? "󰍺" : "󰍹"
     dimmed: root.barIconDimmed
     tooltipText: root.activeProfile !== "" ? "Display · " + root.activeProfile : "Display · hyprmoncfg"
-    iconComponent: Component {
-      Item {
-        OpticalGlyph {
-          id: barDisplayGlyph
-          anchors.fill: parent
-          text: button.text
-          color: button.foreground
-          fontFamily: button.fontFamily
-          fontSize: button.fontSize
-        }
-
-        Text {
-          textFormat: Text.PlainText
-          visible: root.backendConnected
-          anchors.right: barDisplayGlyph.right
-          anchors.bottom: barDisplayGlyph.bottom
-          anchors.rightMargin: -Style.space(1)
-          anchors.bottomMargin: -Style.space(1)
-          text: "󰄬"
-          color: Color.accent
-          font.family: button.fontFamily
-          font.pixelSize: Math.max(7, Math.round(button.fontSize * 0.45))
-          font.bold: true
-        }
-      }
+    // Keep the status badge outside the icon's sizing calculation.
+    Text {
+      textFormat: Text.PlainText
+      visible: root.backendConnected
+      anchors.right: parent.right
+      anchors.bottom: parent.bottom
+      anchors.rightMargin: (button.width - button.opticalSize) / 2 - Style.space(1)
+      anchors.bottomMargin: (button.height - button.opticalSize) / 2 - Style.space(1)
+      text: "󰄬"
+      color: Commons.Color.accent
+      font.family: button.fontFamily
+      font.pixelSize: Math.max(7, Math.round(button.fontSize * 0.45))
+      font.bold: true
     }
 
     onPressed: function(mouseButton) {

@@ -10,6 +10,7 @@ Item {
   property color foreground: "white"
   property string fontFamily: ""
   property int fontSize: 14
+  property real opticalSize: 16
   signal pressed(int mouseButton)
 
   implicitWidth: 30
