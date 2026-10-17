@@ -250,6 +250,12 @@ Panel {
     ? root.document.daemon.preview : null
   readonly property string pendingProfileName: root.daemonPreview
     ? String(root.daemonPreview.profile_name || "") : ""
+  // Automatic rotation of built-in panels; null from a daemon without it.
+  readonly property var rotation: Model.rotationStatus(root.document)
+  readonly property bool selectedRotationAutoSupported: !!root.editorDocument
+    && Model.rotationAutoSupported(root.editorDocument.displays, root.selectedOutputKey)
+  readonly property bool selectedRotationAuto: !!root.selectedOutput && root.selectedOutput.rotation_auto === true
+  property bool rotationLockPending: false
   readonly property string profileOverride: root.document && root.document.daemon
     ? String(root.document.daemon.profile_override || "")
     : ""
@@ -896,10 +902,9 @@ Panel {
     else if (field === 5) edit.vrr = Number(root.pillStep(root.vrrOptions,
       String(output.vrr || 0), delta, wrap))
     else if (field === 6) {
-      var transform = Number(output.transform || 0)
-      if (!Model.transformKnown(transform)) return
-      edit.transform = Model.transformWith(transform, Number(root.pillStep(Model.rotationOptions,
-        String(Model.transformRotation(transform)), delta, wrap)), null)
+      if (!Model.transformKnown(Number(output.transform || 0))) return
+      var rotationOptions = Model.rotationFieldOptions(root.selectedRotationAutoSupported)
+      edit = Model.rotationEdit(output, root.pillStep(rotationOptions, Model.rotationFieldValue(output), delta, wrap))
     }
     else if (field === 7) edit.x = Number(output.x || 0) + delta * 10
     else if (field === 8) edit.y = Number(output.y || 0) + delta * 10
@@ -923,6 +928,11 @@ Panel {
       root.placementCursor = root.bounded(root.placementCursor + delta, 0, Model.placementOptions.length - 1)
       return
     } else if (field === 22) {
+      // Beside Auto the toggle is the rotation lock, not Flipped.
+      if (output.rotation_auto === true) {
+        if (root.rotation) root.setRotationLock(root.rotation.locked !== true)
+        return
+      }
       if (!Model.transformKnown(output.transform || 0)) return
       edit.transform = Model.transformWith(Number(output.transform || 0), null,
         !Model.transformFlipped(output.transform || 0))
@@ -1310,6 +1320,24 @@ Panel {
     root.send("set_profile_auto", { enabled: enabled })
   }
 
+  // The rotation lock is live state, not part of the draft: it holds the turn
+  // the sensor gives panels that rotate automatically.
+  function setRotationLock(locked) {
+    if (!root.rotation || root.rotation.available !== true || root.rotationLockPending) return
+    root.lastError = ""
+    root.rotationLockPending = true
+    root.send("set_rotation_lock", { locked: locked === true })
+  }
+
+  function resetRotation() {
+    var edit = Model.outputFieldResetEdit(root.profileDefaults, root.selectedOutputKey, "transform") || {}
+    if (root.selectedRotationAuto || root.outputFieldChanged("rotation_auto")) {
+      var auto = Model.outputFieldResetEdit(root.profileDefaults, root.selectedOutputKey, "rotation_auto")
+      if (auto) edit.rotation_auto = auto.rotation_auto
+    }
+    root.editOutput(edit)
+  }
+
   function beginCreateProfile() {
     if (!root.managedChecked || !root.editorReady || root.editPending
         || root.daemonPreview || root.previewTransaction !== "" || root.previewPending) return
@@ -1447,6 +1475,7 @@ Panel {
       if (method === "edit_profile") root.editPending = false
       if (method === "preview" || method === "commit" || method === "revert") root.previewPending = false
       if (method === "set_profile_auto") root.profileModePending = false
+      if (method === "set_rotation_lock") root.rotationLockPending = false
       root.lastError = String(envelope.error.message || "hyprmoncfg request failed")
       if (envelope.error.code === "compositor_busy") {
         root.displaysConnecting = true
@@ -1505,6 +1534,8 @@ Panel {
       root.clearPreview(true)
     } else if (method === "set_profile_auto") {
       root.profileModePending = false
+    } else if (method === "set_rotation_lock") {
+      root.rotationLockPending = false
     } else if (method === "save" || method === "delete") {
       root.requestEditorState()
     }
@@ -3054,24 +3085,29 @@ Panel {
                         && Model.transformKnown(transformValue)
                       opacity: root.managedChecked ? 1.0 : root.unmanagedOpacity
                       label: "ROTATION"
-                      detail: Model.transformKnown(transformValue) ? "" : "transform " + transformValue
-                      options: Model.rotationOptions
-                      value: String(Model.transformRotation(transformValue))
+                      detail: !Model.transformKnown(transformValue) ? "transform " + transformValue
+                        : Model.rotationDetail(root.selectedOutput, root.rotation)
+                      options: Model.rotationFieldOptions(root.selectedRotationAutoSupported)
+                      value: Model.rotationFieldValue(root.selectedOutput)
                       hasCursor: root.inspectorHasCursor(6)
-                      toggleLabel: "Flipped"
-                      toggleChecked: Model.transformFlipped(transformValue)
+                      // Beside Auto the toggle locks rotation; otherwise it flips.
+                      toggleLabel: root.selectedRotationAuto ? "Lock" : "Flipped"
+                      toggleChecked: root.selectedRotationAuto
+                        ? !!root.rotation && root.rotation.locked === true
+                        : Model.transformFlipped(transformValue)
                       toggleHasCursor: root.inspectorHasCursor(22)
                       foreground: root.foreground
                       fontFamily: root.fontFamily
-                      resetVisible: root.outputFieldChanged("transform")
+                      resetVisible: root.outputFieldChanged("transform") || root.outputFieldChanged("rotation_auto")
                       resetTooltip: root.outputFieldResetTooltip("rotation")
                       onChanged: function(value) {
-                        root.editOutput({ transform: Model.transformWith(transformValue, Number(value), null) })
+                        root.editOutput(Model.rotationEdit(root.selectedOutput, value))
                       }
                       onToggled: function(checked) {
-                        root.editOutput({ transform: Model.transformWith(transformValue, null, checked) })
+                        if (root.selectedRotationAuto) root.setRotationLock(checked)
+                        else root.editOutput({ transform: Model.transformWith(transformValue, null, checked) })
                       }
-                      onResetRequested: root.resetOutputField("transform")
+                      onResetRequested: root.resetRotation()
                     }
 
                     Grid {

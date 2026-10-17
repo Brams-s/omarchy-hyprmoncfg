@@ -182,3 +182,41 @@ test("form grid columns land on whole pixels inside the inspector's clip edge", 
   const pills = fs.readFileSync(path.join(__dirname, "..", "ScaleField.qml"), "utf8")
   assert.match(pills, /Math\.floor\(\(width - moreWidth - spacing \* count\) \/ count\)/, "pill cells are whole pixels")
 })
+
+test("a built-in panel with a sensor offers Auto rotation, which keeps its rotation as upright", () => {
+  const displays = [{ key: "a", rotation_auto_supported: true }, { key: "b" }]
+  assert.equal(Model.rotationAutoSupported(displays, "a"), true)
+  assert.equal(Model.rotationAutoSupported(displays, "b"), false)
+  assert.deepEqual(Model.rotationFieldOptions(true).map(o => o.value), ["auto", "0", "1", "2", "3"])
+  assert.deepEqual(Model.rotationFieldOptions(false).map(o => o.value), ["0", "1", "2", "3"])
+  assert.equal(Model.rotationFieldValue({ transform: 1 }), "1")
+  assert.equal(Model.rotationFieldValue({ transform: 3, rotation_auto: true }), "auto")
+  assert.deepEqual(Model.rotationEdit({ transform: 3 }, "auto"), { rotation_auto: true })
+  assert.deepEqual(Model.rotationEdit({ transform: 3, rotation_auto: true }, "1"), { transform: 1, rotation_auto: false })
+  assert.deepEqual(Model.rotationEdit({ transform: 4 }, "2"), { transform: 6 }, "a fixed panel never sends rotation_auto")
+  assert.equal(Model.rotationDetail({ transform: 0, rotation_auto: true }, { locked: false }), "")
+  assert.equal(Model.rotationDetail({ transform: 3, rotation_auto: true }, { locked: true }), "Upright 270°, Locked")
+  assert.equal(Model.rotationDetail({ transform: 0, rotation_auto: true }, { paused: true }), "Upright while folded")
+  assert.equal(Model.rotationDetail({ transform: 1 }, { locked: true }), "", "a fixed rotation has no detail")
+  assert.equal(Model.rotationStatus({}), null, "an older daemon has no rotation")
+})
+
+test("arrows step into Auto, and beside Auto the toggle key locks rotation", () => {
+  const locks = []
+  const output = { key: "a", transform: 0 }
+  let { root, edits } = inspectorRoot(output, 6, { selectedRotationAutoSupported: true })
+  root.adjustInspectorField(-1, false)
+  assert.deepEqual(edits, [{ rotation_auto: true }])
+
+  const auto = { key: "a", transform: 0, rotation_auto: true }
+  ;({ root, edits } = inspectorRoot(auto, 6, { selectedRotationAutoSupported: true }))
+  root.adjustInspectorField(1, false)
+  assert.deepEqual(edits, [{ transform: 0, rotation_auto: false }])
+
+  ;({ root, edits } = inspectorRoot(auto, 22, {
+    rotation: { available: true, locked: false }, setRotationLock: locked => locks.push(locked)
+  }))
+  root.adjustInspectorField(1, false)
+  assert.deepEqual(locks, [true])
+  assert.deepEqual(edits, [], "the lock is not a draft edit")
+})

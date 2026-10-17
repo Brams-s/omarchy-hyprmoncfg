@@ -89,6 +89,7 @@ A small background service is what watches for this. It catches hotplug, lid and
 - Snap-to-edge arrangement, and the displays beside an output move with it when scale, mode or rotation changes its size
 - Per-output scale, checked for whole-pixel sharpness
 - Mirroring, rotation and flips
+- On 2-in-1s and tablets, **Auto** rotation that turns the built-in panel with the device, with a rotation lock beside it (needs hyprmoncfg with rotation support and iio-sensor-proxy)
 - Positions by hand or by snapping
 
 **Colour and signal**

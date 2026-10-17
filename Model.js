@@ -588,6 +588,7 @@ var outputFieldDefaults = {
   scale: 1,
   vrr: 0,
   transform: 0,
+  rotation_auto: false,
   x: 0,
   y: 0,
   mirror_of: "",
@@ -1452,6 +1453,58 @@ function transformWith(transform, rotation, flipped) {
   return r + (f ? 4 : 0)
 }
 
+// A built-in panel on a 2-in-1 or tablet can turn with the device. The daemon
+// offers it per display (rotation_auto_supported) when it has an orientation
+// sensor; the panel's transform then means upright, and the sensor's turn is
+// live state the daemon applies on top. Drafts always describe the upright
+// layout.
+function rotationAutoSupported(displays, key) {
+  if (!(displays instanceof Array)) return false
+  for (var i = 0; i < displays.length; i++)
+    if (displays[i] && displays[i].key === key) return displays[i].rotation_auto_supported === true
+  return false
+}
+
+function rotationFieldOptions(autoSupported) {
+  return autoSupported ? [{ value: "auto", label: "Auto" }].concat(rotationOptions) : rotationOptions
+}
+
+function rotationFieldValue(output) {
+  if (!output) return ""
+  if (output.rotation_auto === true) return "auto"
+  return String(transformRotation(output.transform || 0))
+}
+
+// Auto keeps the current rotation as upright; a fixed rotation turns Auto
+// off. Only a panel that rotates automatically sends rotation_auto: false,
+// so a daemon without rotation support never sees the field.
+function rotationEdit(output, value) {
+  var transform = Number((output || {}).transform || 0)
+  if (value === "auto") return { rotation_auto: true }
+  var edit = { transform: transformWith(transform, Number(value), null) }
+  if (output && output.rotation_auto === true) edit.rotation_auto = false
+  return edit
+}
+
+// The detail beside ROTATION for a panel that turns with the device: its
+// upright rotation when not Normal, and whether turning is held.
+function rotationDetail(output, rotation) {
+  if (!output || output.rotation_auto !== true) return ""
+  var parts = []
+  var transform = Number(output.transform || 0)
+  if (transformKnown(transform) && transform !== 0) {
+    var label = rotationOptions[transformRotation(transform)].label
+    parts.push("Upright " + (transformFlipped(transform) ? "flipped " + label : label))
+  }
+  if (rotation && rotation.locked === true) parts.push("Locked")
+  else if (rotation && rotation.paused === true) parts.push("Upright while folded")
+  return parts.join(", ")
+}
+
+function rotationStatus(document) {
+  return document && document.rotation && typeof document.rotation === "object" ? document.rotation : null
+}
+
 // Directions for "Place beside nearest", identical to Alt+arrow snapping.
 var placementOptions = [
   { value: "left", label: "Left" },
@@ -1680,6 +1733,12 @@ if (typeof module !== "undefined") {
     nearestSnapAnchor: nearestSnapAnchor,
     snapAnchorName: snapAnchorName,
     rotationOptions: rotationOptions,
+    rotationAutoSupported: rotationAutoSupported,
+    rotationFieldOptions: rotationFieldOptions,
+    rotationFieldValue: rotationFieldValue,
+    rotationEdit: rotationEdit,
+    rotationDetail: rotationDetail,
+    rotationStatus: rotationStatus,
     transformKnown: transformKnown,
     transformRotation: transformRotation,
     transformFlipped: transformFlipped,

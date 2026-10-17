@@ -1076,10 +1076,13 @@ test("the inspectors use standards-based colour terms and per-field profile rese
   // the control's own reset action (dropdowns, segmented, decimal and coordinate
   // fields), 2 as standalone buttons (Enabled toggle, ICC path).
   assert.equal((qml.match(/resetVisible: root\.outputFieldChanged/g) || []).length, 19)
-  assert.equal((qml.match(/onResetRequested: root\.resetOutputField/g) || []).length, 19)
+  assert.equal((qml.match(/onResetRequested: root\.resetOutputField/g) || []).length, 18)
+  // Rotation resets its transform and Auto together.
+  assert.match(qml, /onResetRequested: root\.resetRotation\(\)/)
+  assert.match(qml, /resetVisible: root\.outputFieldChanged\("transform"\) \|\| root\.outputFieldChanged\("rotation_auto"\)/)
   assert.equal((qml.match(/visible: root\.outputFieldChanged/g) || []).length, 2)
   assert.equal((qml.match(/onClicked: root\.resetOutputField/g) || []).length, 2)
-  for (const field of ["enabled", "mode", "scale", "vrr", "transform", "x", "y", "mirror_of", "bitdepth", "cm",
+  for (const field of ["enabled", "mode", "scale", "vrr", "x", "y", "mirror_of", "bitdepth", "cm",
     "sdr_brightness", "sdr_saturation", "sdr_min_luminance", "sdr_max_luminance", "sdr_eotf", "min_luminance",
     "max_luminance", "max_avg_luminance", "supports_wide_color", "supports_hdr", "icc"])
     assert.match(qml, new RegExp("root\\.resetOutputField\\(\"" + field + "\"\\)"), field)
@@ -1330,7 +1333,7 @@ test("profile details and workspace labels mirror the TUI semantics", () => {
   assert.match(panelQml, /Number\(root\.selectedSavedSummary\.connected_outputs \|\| 0\) \+ " connected"/)
   assert.match(panelQml, /model: root\.selectedSavedWorkspaceRows/)
   assert.match(panelQml, /Model\.outputDisplayLabel\(root\.draftProfile, String\(modelData\)\)/)
-  assert.match(panelQml, /label: "ROTATION"\s+detail: Model\.transformKnown\(transformValue\) \? "" : "transform " \+ transformValue/)
+  assert.match(panelQml, /label: "ROTATION"\s+detail: !Model\.transformKnown\(transformValue\) \? "transform " \+ transformValue\s+: Model\.rotationDetail\(root\.selectedOutput, root\.rotation\)/)
   assert.doesNotMatch(panelQml, /label: "TRANSFORM"/)
 })
 

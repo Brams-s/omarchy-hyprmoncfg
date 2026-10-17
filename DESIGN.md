@@ -161,6 +161,14 @@ in the keyboard field order, and Hyprland's terminology.
 - Rotation is Normal, 90°, 180° and 270° with a separate Flipped toggle. Both edit
   the one Hyprland transform and preserve each other; an unknown transform is
   shown and left alone; the ROTATION header shows the raw transform.
+- When the daemon reports `rotation_auto_supported` for a built-in panel, Rotation
+  starts with **Auto**, which turns the panel with the device and keeps its
+  current rotation as upright (shown as, for example, "Upright 270°" in the
+  header). Choosing a fixed rotation turns Auto off. Beside Auto the toggle is
+  **Lock**, the live rotation lock (`set_rotation_lock`), not a draft edit; the
+  header adds "Locked", or "Upright while folded" on a convertible folded as a
+  laptop. Reset restores the saved rotation and Auto together. A daemon without
+  rotation support shows neither.
 - Kept as they were: Enabled (toggle), Mode, Mirror and colour space
   (dropdowns: long or open lists), SDR and display luminance values (exact
   decimal entry with units; the underlying multipliers and nits are not bounded
