@@ -3109,6 +3109,8 @@ Panel {
                       enabled: root.managedChecked && !!root.selectedOutput && !root.editPending
                       opacity: root.managedChecked ? 1.0 : root.unmanagedOpacity
                       label: "REFRESH"
+                      // A display can offer more rates than fit on one line.
+                      wrap: true
                       options: root.selectedRefreshOptions
                       value: root.selectedOutput ? Model.outputMode(root.selectedOutput) : ""
                       hasCursor: root.inspectorHasCursor(23)

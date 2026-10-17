@@ -227,3 +227,12 @@ test("the rotation lock uses the daemon's set_rotation method", () => {
   assert.match(qml, /root\.send\("set_rotation", \{ locked: locked === true \}\)/)
   assert.doesNotMatch(qml, /set_rotation_lock/)
 })
+
+test("Refresh wraps when a display offers more rates than fit on one line", () => {
+  const field = fs.readFileSync(path.join(__dirname, "..", "SegmentedField.qml"), "utf8")
+  assert.match(qml, /label: "REFRESH"\s+\/\/[^\n]*\n\s+wrap: true/)
+  assert.match(field, /readonly property bool wrapped: root\.wrap && controls\.implicitWidth > root\.width/)
+  assert.match(field, /Flow \{\s+id: wrappedChips/)
+  // The one-line row stays laid out, so it can tell when it fits again.
+  assert.match(field, /opacity: root\.wrapped \? 0 : 1\s+enabled: !root\.wrapped/)
+})

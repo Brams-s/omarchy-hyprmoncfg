@@ -25,6 +25,10 @@ Column {
   property bool hasCursor: false
   // Chip that carries the panel's keyboard cursor; -1 means the selected chip.
   property int cursorIndex: -1
+  // wrap lets a row too wide for the panel continue on further lines
+  // (Refresh, whose rates vary per display) instead of running off the edge.
+  property bool wrap: false
+  readonly property bool wrapped: root.wrap && controls.implicitWidth > root.width
   property bool resetVisible: false
   property string resetTooltip: "Reset to loaded profile value"
   // Optional trailing on/off chip in the same row (Rotation's Flipped).
@@ -45,7 +49,7 @@ Column {
   // A row whose chips leave no room for the reset beside them shows it in
   // the header instead, so it never covers the last chip.
   readonly property bool resetInHeader: root.resetVisible
-    && controls.implicitWidth + Style.space(8) + rowReset.implicitWidth > root.width
+    && (root.wrapped || controls.implicitWidth + Style.space(8) + rowReset.implicitWidth > root.width)
 
   function selectedIndex() {
     for (var i = 0; i < options.length; i++)
@@ -109,10 +113,43 @@ Column {
 
   Item {
     width: parent.width
-    height: Math.max(controls.implicitHeight, rowReset.visible ? rowReset.height : 0)
+    height: Math.max(root.wrapped ? wrappedChips.implicitHeight : controls.implicitHeight,
+      rowReset.visible ? rowReset.height : 0)
+
+    // The same chips as ButtonGroup draws, flowing onto more lines.
+    Flow {
+      id: wrappedChips
+      visible: root.wrapped
+      width: parent.width
+      spacing: group.spacing
+
+      Repeater {
+        model: root.wrapped ? root.options : []
+
+        Button {
+          required property var modelData
+          required property int index
+          text: group.optionLabel(modelData)
+          selected: !root.actions && group.optionValue(modelData) === root.value
+          hasCursor: root.hasCursor
+            && index === (root.cursorIndex >= 0 ? root.cursorIndex : Math.max(0, root.selectedIndex()))
+          bordered: true
+          enabled: root.enabled
+          foreground: root.foreground
+          accent: root.accent
+          fontFamily: root.fontFamily
+          fontSize: root.fontSize
+          onClicked: root.changed(group.optionValue(modelData))
+        }
+      }
+    }
 
     Row {
       id: controls
+      // Still laid out while wrapped, only transparent and inert, so its
+      // width keeps telling the row when it fits on one line again.
+      opacity: root.wrapped ? 0 : 1
+      enabled: !root.wrapped
       anchors.left: parent.left
       anchors.verticalCenter: parent.verticalCenter
       spacing: group.spacing
