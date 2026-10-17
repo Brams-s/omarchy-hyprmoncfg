@@ -152,10 +152,10 @@ test("the installed backend requirement matches the manifest and upgrade message
   const required = require("../manifest.json").hyprmoncfg.minimumVersion
   assert.equal(qml.match(/Model.versionAtLeast\(versionOutput.text, "([^"]+)"\)/)[1], required)
   assert.ok(qml.includes("hyprmoncfg " + required + " or newer is still required."))
-  assert.equal(Model.versionAtLeast("hyprmoncfg 1.18.4", required), false)
-  assert.equal(Model.versionAtLeast("hyprmoncfg 1.19.0-rc.0", required), false)
+  assert.equal(Model.versionAtLeast("hyprmoncfg 1.23.0", required), false)
+  assert.equal(Model.versionAtLeast("hyprmoncfg 1.24.0-rc.0", required), false)
   assert.equal(Model.versionAtLeast("hyprmoncfg " + required, required), true)
-  assert.equal(Model.versionAtLeast("hyprmoncfg 1.19.0", required), true)
+  assert.equal(Model.versionAtLeast("hyprmoncfg 1.24.1", required), true)
 })
 
 test("installer and TUI launches release panel focus before starting the terminal", () => {
