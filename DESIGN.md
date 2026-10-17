@@ -137,10 +137,15 @@ in the keyboard field order, and Hyprland's terminology.
 - Scale follows Omarchy's own Display panel (decided 2026-09-28, Carmine): one
   row of bordered preset pills, the current one active and its label
   right-aligned in the SCALE header, then a More dropdown with every sharp
-  scale hyprmoncfg reports for the display (`editor_state` `scale_options`, from
-  the backend's `internal/scaling`), so no sharp scale is out of reach.
-  - Preset rule: presets 1, 1.25, 1.5, 1.6, 2 and 3, plus 4 when the backend
-    list contains 4 and the mode is at least 5120 pixels wide. As in Omarchy's
+  scale for the draft mode, so no sharp scale is out of reach. Revised
+  2026-10-17 (sharpness in Go): the pills, the list and every sharpness verdict
+  come from the daemon's stateless `scale_info` (Go's `internal/scaling`),
+  cached by mode and scale; the panel never computes sharpness. A daemon
+  without `scale_info` gets no pills, no Blurry marker and no Custom…, and More
+  falls back to `editor_state` `scale_options` for the live mode.
+  - Preset rule (Go's `scaling.PresetChoices`): presets 1, 1.25, 1.5, 1.6, 2
+    and 3, plus 4 when the sharp list reaches 4 and the mode is at least 5120
+    pixels wide. As in Omarchy's
     `cleanScale`/`availableScales`, each preset becomes the smallest sharp scale
     at or above it; presets that land on the same scale collapse to the closest
     one; preset order is kept; a preset above the largest sharp scale is
@@ -148,22 +153,23 @@ in the keyboard field order, and Hyprland's terminology.
     the mode, so stepping never changes their count. A current scale that is
     not a pill, sharp or not, is shown on the More trigger instead (active,
     labelled `1.33x`) and is never rewritten.
-  - Sharpness (2026-10-17): a current scale that is not sharp for the draft
-    mode reads `1.33x ⚠` on More and in the list, and `1.33x ⚠ Blurry` in
+  - Blurry (2026-10-17): a current scale that `scale_info` reports as not
+    sharp reads `1.33x ⚠` on More and in the list, and `1.33x ⚠ Blurry` in
     the SCALE header, in the urgent colour but never by colour alone. Blurry
-    is the one user-facing label in both clients, as in the TUI. `Model.scaleIsSharp`/`closestSharpScale`
-    mirror `internal/scaling` with parity vectors in `tests/scale.test.js`.
+    is the one user-facing label in both clients.
   - Custom… (2026-10-17) ends the More list, as in the TUI. It opens an exact
-    entry built from key events (`KeyField`), validated like the TUI and the
-    backend (0.25 to 4, five decimals) and explained line for line like the
-    TUI's dialog: sharp sizes, or the fractional size and the closest sharp
-    scale, which Enter applies. Esc cancels.
+    entry built from key events (`KeyField`). The panel only parses the
+    number; `scale_info` checks the range and sharpness, and the feedback is
+    worded line for line like the TUI's dialog: sharp sizes, or Blurry with
+    the fractional size and the closest sharp scale. Enter sends the typed
+    scale with `snap_scale`, so Go applies the closest sharp scale. Esc
+    cancels.
   - Label rule: two decimals with trailing zeros trimmed and an `x` suffix
     (`1.33x`, `1.07x`, `2x`); if two scales in the same list would share a
     label, both show the exact value. Labels are display only: the stored and
     applied value is always the exact sharp scale.
   - Keyboard: arrows step through the full sharp list, as the TUI does; Enter
-    opens More. The TUI mirrors the parity vectors in `tests/scale.test.js`.
+    opens More.
 - Resolution and Refresh (2026-10-17) replace the single Mode dropdown, as in
   the TUI and Omarchy's Display panel. RESOLUTION is a dropdown of the
   display's resolutions, each once, largest first. REFRESH is a `ButtonGroup`

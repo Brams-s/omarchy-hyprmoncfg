@@ -740,6 +740,56 @@ Panel {
     root.editDraft(edit)
   }
 
+  // ---- Scale descriptions from the daemon's scale_info (sharpness is Go's).
+  // Replies are cached by mode and scale, so any draft, however it was made,
+  // reads the right verdict. A daemon without the method answers "unknown IPC
+  // method"; the Scale row then shows no pills, no Blurry marker and no Custom….
+  property var scaleInfos: ({})
+  property var scaleInfoPending: ({})
+  property bool scaleInfoSupported: true
+  readonly property string selectedScaleKey: root.selectedOutput
+    ? Model.scaleInfoKey(root.selectedOutput.width, root.selectedOutput.height, root.selectedOutput.scale) : ""
+  readonly property var selectedScaleInfo: {
+    var info = root.selectedScaleKey !== "" ? root.scaleInfos[root.selectedScaleKey] : undefined
+    return info && !info.error ? info : null
+  }
+  onSelectedScaleKeyChanged: Qt.callLater(root.requestSelectedScaleInfo)
+  onBackendConnectedChanged: if (root.backendConnected) Qt.callLater(root.requestSelectedScaleInfo)
+
+  function requestSelectedScaleInfo() {
+    var output = root.selectedOutput
+    if (output) root.requestScaleInfo(output.width, output.height, output.scale)
+  }
+
+  function requestScaleInfo(width, height, scale) {
+    var w = Number(width || 0), h = Number(height || 0), value = Number(scale)
+    if (!root.scaleInfoSupported || !backendSocket.connected || w <= 0 || h <= 0 || !isFinite(value)) return
+    var key = Model.scaleInfoKey(w, h, value)
+    if (root.scaleInfos[key] !== undefined || root.scaleInfoPending[key]) return
+    var pending = Object.assign({}, root.scaleInfoPending)
+    pending[key] = true
+    root.scaleInfoPending = pending
+    root.send("scale_info", { width: w, height: h, scale: value }, { scaleKey: key })
+  }
+
+  function receiveScaleInfo(key, envelope) {
+    var pending = Object.assign({}, root.scaleInfoPending)
+    delete pending[key]
+    root.scaleInfoPending = pending
+    var infos = Object.assign({}, root.scaleInfos)
+    if (envelope.error) {
+      var message = String(envelope.error.message || "")
+      if (/unknown IPC method/.test(message)) {
+        root.scaleInfoSupported = false
+        return
+      }
+      infos[key] = { error: message }
+    } else {
+      infos[key] = envelope.result || {}
+    }
+    root.scaleInfos = infos
+  }
+
   function outputFieldChanged(field) {
     return Model.outputFieldChanged(root.draftProfile, root.profileDefaults,
       root.selectedOutputKey, field)
@@ -900,7 +950,7 @@ Panel {
     else if (field === 23) edit.mode = root.pillStep(root.selectedRefreshOptions,
       Model.outputMode(output), delta, wrap)
     else if (field === 2) edit.scale = Number(Model.stepScaleOption(
-      Model.scaleOptions(root.editorDocument.displays, root.selectedOutputKey, output.scale),
+      Model.scaleOptions(root.editorDocument.displays, root.selectedOutputKey, output.scale, root.selectedScaleInfo),
       Model.formatScale(output.scale), delta))
     else if (field === 3) edit.bitdepth = Number(root.pillStep(root.bitdepthOptions,
       String(output.bitdepth || 8), delta, wrap))
@@ -1477,6 +1527,10 @@ Panel {
         root.requestEditorState()
       return
     }
+    if (method === "scale_info") {
+      root.receiveScaleInfo(context.scaleKey, envelope)
+      return
+    }
     if (envelope.error) {
       if (method === "editor_state") root.editorLoading = false
       if (method === "edit_profile") root.editPending = false
@@ -1690,6 +1744,10 @@ Panel {
       } else {
         root.pendingMethods = ({})
         root.pendingContexts = ({})
+        // The next daemon may be another version: ask it afresh.
+        root.scaleInfos = ({})
+        root.scaleInfoPending = ({})
+        root.scaleInfoSupported = true
         root.editorReady = false
         root.editorLoading = false
         root.editorRefreshQueued = false
@@ -3067,9 +3125,7 @@ Panel {
                       enabled: root.managedChecked && !!root.selectedOutput && !root.editPending
                       opacity: root.managedChecked ? 1.0 : root.unmanagedOpacity
                       readonly property var row: Model.scaleRow(root.editorDocument.displays, root.selectedOutputKey,
-                        root.selectedOutput ? root.selectedOutput.scale : 1,
-                        root.selectedOutput ? Number(root.selectedOutput.width || 0) : 0,
-                        root.selectedOutput ? Number(root.selectedOutput.height || 0) : 0)
+                        root.selectedOutput ? root.selectedOutput.scale : 1, root.selectedScaleInfo)
                       presets: row.presets
                       allOptions: row.options
                       sharp: row.sharp
@@ -3078,6 +3134,8 @@ Panel {
                       modeWidth: root.selectedOutput ? Number(root.selectedOutput.width || 0) : 0
                       modeHeight: root.selectedOutput ? Number(root.selectedOutput.height || 0) : 0
                       urgent: root.urgent
+                      customAvailable: row.supported
+                      infos: root.scaleInfos
                       value: root.selectedOutput ? Model.formatScale(root.selectedOutput.scale) : "1"
                       popupParent: keyCatcher
                       ownerOpen: root.opened && root.expanded && !inspectorViewport.moving
@@ -3088,6 +3146,9 @@ Panel {
                       resetTooltip: root.outputFieldResetTooltip("display scale")
                       onChanged: function(value) { root.editOutput({ scale: Number(value) }) }
                       onCustomClosed: Qt.callLater(function() { keyCatcher.forceActiveFocus() })
+                      // Go snaps a Blurry typed scale to the closest sharp one.
+                      onCustomApplied: function(value) { root.editOutput({ scale: value, snap_scale: true }) }
+                      onInfoNeeded: function(value) { root.requestScaleInfo(modeWidth, modeHeight, value) }
                       onResetRequested: root.resetOutputField("scale")
                     }
 

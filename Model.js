@@ -699,14 +699,24 @@ function compactScaleLabels(values) {
   return labels
 }
 
-// Every sharp scale hyprmoncfg reports for the display (editor_state
-// scale_options), plus the current scale if it is not one of them; exact
-// values in ascending order, compact labels. A current scale that is not
-// sharp for the mode (modeWidth x modeHeight, when given) is flagged and its
-// label marked with a warning sign, so the warning never relies on colour.
-function scaleOptions(editorDisplays, key, current, modeWidth, modeHeight) {
-  var metadata = editorMetadata(editorDisplays, key)
-  var values = metadata.scale_options instanceof Array ? metadata.scale_options.slice() : []
+// Sharpness is decided in Go only. The daemon's stateless scale_info
+// describes one scale on one mode: the preset pills, every sharp scale
+// (options), whether the scale is sharp, its logical size, and the closest
+// sharp scale. The panel caches replies by scaleInfoKey and only formats
+// them; it never computes sharpness itself.
+function scaleInfoKey(width, height, scale) {
+  return Number(width || 0) + "x" + Number(height || 0) + "@" + formatScale(scale)
+}
+
+// The More list: the sharp scales from scale_info (or, from a daemon without
+// it, the editor display's scale_options for the live mode), plus the current
+// scale if it is not one of them; exact values in ascending order, compact
+// labels. Only a scale_info verdict marks the current scale Blurry ("⚠"), so
+// the warning never relies on colour and is never guessed.
+function scaleOptions(editorDisplays, key, current, info) {
+  var values = info && info.options instanceof Array ? info.options.slice()
+    : (editorMetadata(editorDisplays, key).scale_options instanceof Array
+      ? editorMetadata(editorDisplays, key).scale_options.slice() : [])
   var normalizedCurrent = formatScale(current)
   var found = false
   for (var i = 0; i < values.length; i++) {
@@ -715,156 +725,88 @@ function scaleOptions(editorDisplays, key, current, modeWidth, modeHeight) {
   if (!found) values.push(Number(current || 1))
   values.sort(function(a, b) { return Number(a) - Number(b) })
   var labels = compactScaleLabels(values)
-  var currentSharp = modeHeight === undefined
-    ? found : scaleIsSharp(modeWidth, modeHeight, current)
+  var blurry = !!info && info.sharp === false
   return values.map(function(value) {
     var formatted = formatScale(value)
-    var sharp = formatted !== normalizedCurrent || currentSharp
-    return { value: formatted, label: labels[formatted] + (sharp ? "" : " ⚠"), sharp: sharp }
+    var marked = blurry && formatted === normalizedCurrent
+    return { value: formatted, label: labels[formatted] + (marked ? " ⚠" : ""), sharp: !marked }
   })
 }
 
-// Omarchy's Display panel presets plus 1.5; 4 joins only on 5K-class modes
-// where hyprmoncfg reports it as sharp.
-var scalePresetValues = [1, 1.25, 1.5, 1.6, 2, 3]
-
-// The preset pills, mapped the way Omarchy's availableScales/cleanScale map
-// them: each preset becomes the smallest sharp scale at or above it (from the
-// backend's list), presets landing on the same sharp scale collapse to the one
-// closest to it, and preset order is kept. The pills depend only on the mode,
-// so stepping never changes how many there are; a current scale that is not a
-// pill is shown on More instead (scaleRow). Every pill is sharp.
-function scalePresets(editorDisplays, key, current, modeWidth) {
-  var metadata = editorMetadata(editorDisplays, key)
-  var sharp = (metadata.scale_options instanceof Array ? metadata.scale_options : [])
-    .map(Number).filter(function(v) { return isFinite(v) && v > 0 })
-    .sort(function(a, b) { return a - b })
-  var presets = scalePresetValues.slice()
-  var hasFour = sharp.some(function(v) { return formatScale(v) === "4" })
-  if (hasFour && Number(modeWidth || 0) >= 5120) presets.push(4)
-
-  var byEffective = {}
-  for (var i = 0; i < presets.length; i++) {
-    var effective = null
-    for (var j = 0; j < sharp.length; j++) {
-      if (sharp[j] >= presets[i] - 1e-9) { effective = sharp[j]; break }
-    }
-    if (effective === null) continue
-    var keyText = formatScale(effective)
-    var distance = Math.abs(presets[i] - effective)
-    if (!byEffective[keyText] || distance < byEffective[keyText].distance)
-      byEffective[keyText] = { value: keyText, index: i, distance: distance }
-  }
-  var pills = Object.keys(byEffective).map(function(k) { return byEffective[k] })
-    .sort(function(a, b) { return a.index - b.index })
-    .map(function(c) { return c.value })
-
-  var labels = compactScaleLabels(scaleOptions(editorDisplays, key, current).map(function(o) { return o.value }))
-  return pills.map(function(value) { return { value: value, label: labels[value] || value + "x", sharp: true } })
+// The preset pills scale_info reports for the mode, labelled like More.
+function scalePresets(info, current) {
+  var presets = info && info.presets instanceof Array ? info.presets : []
+  var options = info && info.options instanceof Array ? info.options.slice() : []
+  var labels = compactScaleLabels(options.concat(presets).concat([Number(current || 1)]))
+  return presets.map(function(value) {
+    var formatted = formatScale(value)
+    return { value: formatted, label: labels[formatted] || formatted + "x", sharp: true }
+  })
 }
 
-// What the Scale row shows for the current scale: whether it is one of the
-// pills or sits on More, the More trigger's text, and the SCALE header's
-// detail. An unsharp scale reads "1.33x ⚠" with "Blurry", never colour alone.
-function scaleRow(editorDisplays, key, current, modeWidth, modeHeight) {
-  var presets = scalePresets(editorDisplays, key, current, modeWidth)
-  var options = scaleOptions(editorDisplays, key, current, modeWidth, modeHeight)
+// What the Scale row shows for the current scale. The pills depend only on
+// the mode, so stepping never changes their count; a current scale that is
+// not a pill sits on More. A Blurry scale reads "1.33x ⚠" there and
+// "1.33x ⚠ Blurry" in the SCALE header. Without scale_info (an older daemon)
+// there are no pills, no verdict and no Custom… (supported: false).
+function scaleRow(editorDisplays, key, current, info) {
+  var presets = scalePresets(info, current)
+  var options = scaleOptions(editorDisplays, key, current, info)
   var value = formatScale(current)
   var onMore = !presets.some(function(p) { return p.value === value })
   var entry = options.filter(function(o) { return o.value === value })[0] || { label: value + "x", sharp: true }
-  var label = entry.sharp ? entry.label : entry.label.replace(/ ⚠$/, "")
+  var label = entry.label.replace(/ ⚠$/, "")
+  var blurry = !!info && info.sharp === false
   return {
+    supported: !!info,
     presets: presets,
     options: options,
     onMore: onMore,
-    sharp: entry.sharp,
-    moreText: onMore ? label + (entry.sharp ? "" : " ⚠") : "More",
-    detail: entry.sharp ? label : label + " ⚠ Blurry"
+    sharp: !blurry,
+    moreText: onMore ? label + (blurry ? " ⚠" : "") : "More",
+    detail: blurry ? label + " ⚠ Blurry" : label
   }
 }
 
-// ---------------------------------------------------------------------------
-// Sharpness, mirrored from hyprmoncfg internal/scaling (Sharp, ClosestSharp,
-// GridScales) for typed Custom… entry. Parity vectors from the Go functions
-// are in tests/scale.test.js. Hyprland corrects scales onto a 1/120 grid; a
-// scale is sharp when width and height divide into whole logical pixels.
-var scaleGridSteps = 120
-var minScale = 0.25
-var maxScale = 4
-
-function roundScale(value) {
-  return Math.round(Number(value) * 100000) / 100000
-}
-
-function sharpAtNumerator(width, height, numerator) {
-  return (scaleGridSteps * width) % numerator === 0 && (scaleGridSteps * height) % numerator === 0
-}
-
-function scaleIsSharp(width, height, value) {
-  var scale = Number(value)
-  if (!isFinite(scale) || scale <= 0) return false
-  scale = roundScale(scale)
-  width = Number(width || 0)
-  height = Number(height || 0)
-  if (width <= 0 || height <= 0) return true
-  if (Number.isInteger(width / scale) && Number.isInteger(height / scale)) return true
-  var numerator = Math.round(scale * scaleGridSteps)
-  if (numerator <= 0 || roundScale(numerator / scaleGridSteps) !== scale) return false
-  return sharpAtNumerator(width, height, numerator)
-}
-
-// The sharp scale nearest to value, from 0.25 to 4; null when there is none.
-function closestSharpScale(width, height, value) {
-  var scale = Number(value)
-  width = Number(width || 0)
-  height = Number(height || 0)
-  if (!isFinite(scale) || scale <= 0 || width <= 0 || height <= 0) return null
-  scale = roundScale(scale)
-  var best = null, bestDistance = Infinity
-  for (var n = Math.ceil(minScale * scaleGridSteps); n <= Math.floor(maxScale * scaleGridSteps); n++) {
-    if (!sharpAtNumerator(width, height, n)) continue
-    var candidate = roundScale(n / scaleGridSteps)
-    var distance = Math.abs(candidate - scale)
-    if (distance < bestDistance) { best = candidate; bestDistance = distance }
-  }
-  return best
-}
-
-// Typed scale entry, validated like the TUI's Custom… dialog and the backend
-// (0.25 to 4, five decimals). Returns { value } or { error }.
+// Typed Custom… text, parsed only: the range and sharpness come from Go.
 function parseScaleEntry(text) {
   var raw = String(text === undefined || text === null ? "" : text).trim()
   if (raw === "") return { error: "scale is required" }
   if (!/^[+]?(\d+(\.\d+)?|\.\d+)$/.test(raw)) return { error: "scale must be a number" }
   var scale = Number(raw)
   if (!isFinite(scale)) return { error: "scale must be a number" }
-  if (scale < minScale || scale > maxScale)
-    return { error: "scale must be between " + formatScale(minScale) + " and " + formatScale(maxScale) }
-  return { value: roundScale(scale) }
+  return { value: scale }
 }
 
-// What the Custom… entry says under the field, line for line with the TUI's
-// dialog, and the scale Enter applies: the typed one when it is sharp,
-// otherwise the closest sharp scale.
-function scaleEntryFeedback(width, height, text) {
+function wholePixels(value) {
+  return String(Math.round(Number(value || 0)))
+}
+
+// What Custom… says under the field, worded line for line like the TUI's
+// dialog from the daemon's scale_info reply (null while it is on its way).
+// `apply` is what Enter may send, with snap_scale so Go snaps a Blurry scale.
+function scaleEntryLines(width, height, text, info) {
   var parsed = parseScaleEntry(text)
-  if (parsed.error) return { error: parsed.error, lines: [{ text: parsed.error, tone: "error" }], apply: null }
-  var value = parsed.value
-  var shown = formatScale(value)
+  if (parsed.error) return { lines: [{ text: parsed.error, tone: "error" }], apply: null }
+  if (!info) return { lines: [], apply: null }
+  if (info.error) return { lines: [{ text: String(info.error), tone: "error" }], apply: null }
+  var shown = formatScale(info.scale)
+  var logical = info.logical instanceof Array ? info.logical : [0, 0]
   var w = Number(width || 0), h = Number(height || 0)
-  if (scaleIsSharp(w, h, value)) {
-    return { apply: value, sharp: true, lines: [{ tone: "ok",
-      text: "Sharp: " + w + " / " + shown + " = " + Math.round(w / value) + ", "
-        + h + " / " + shown + " = " + Math.round(h / value) + " logical px." }] }
+  if (info.sharp) {
+    return { apply: parsed.value, lines: [{ tone: "ok",
+      text: "Sharp: " + w + " / " + shown + " = " + wholePixels(logical[0]) + ", "
+        + h + " / " + shown + " = " + wholePixels(logical[1]) + " logical px." }] }
   }
   var lines = [{ tone: "warning",
-    text: "⚠ Blurry: final size has fractional px (" + w + " / " + shown + " = " + (w / value).toFixed(2)
-      + ", " + h + " / " + shown + " = " + (h / value).toFixed(2) + ")." }]
-  var closest = closestSharpScale(w, h, value)
-  if (closest === null) return { apply: value, sharp: false, lines: lines }
-  lines.push({ tone: "ok", text: "Closest sharp: " + formatScale(closest) + " -> " + Math.round(w / closest)
-    + " x " + Math.round(h / closest) + " logical px. Enter applies it." })
-  return { apply: closest, sharp: false, lines: lines }
+    text: "⚠ Blurry: final size has fractional px (" + w + " / " + shown + " = " + Number(logical[0]).toFixed(2)
+      + ", " + h + " / " + shown + " = " + Number(logical[1]).toFixed(2) + ")." }]
+  if (info.closest_logical instanceof Array) {
+    lines.push({ tone: "ok", text: "Closest sharp: " + formatScale(info.closest) + " -> "
+      + wholePixels(info.closest_logical[0]) + " x " + wholePixels(info.closest_logical[1])
+      + " logical px. Enter applies it." })
+  }
+  return { apply: parsed.value, lines: lines }
 }
 
 // ---------------------------------------------------------------------------
@@ -1955,7 +1897,6 @@ if (typeof module !== "undefined") {
     gridCellWidth: gridCellWidth,
     stepScaleOption: stepScaleOption,
     compactScaleLabels: compactScaleLabels,
-    scalePresetValues: scalePresetValues,
     scalePresets: scalePresets,
     outputName: outputName,
     outputDisplayLabel: outputDisplayLabel,
@@ -2021,11 +1962,9 @@ if (typeof module !== "undefined") {
     chipMoves: chipMoves,
     compactPanelLayout: compactPanelLayout,
     scaleRow: scaleRow,
-    roundScale: roundScale,
-    scaleIsSharp: scaleIsSharp,
-    closestSharpScale: closestSharpScale,
+    scaleInfoKey: scaleInfoKey,
     parseScaleEntry: parseScaleEntry,
-    scaleEntryFeedback: scaleEntryFeedback,
+    scaleEntryLines: scaleEntryLines,
     modeParts: modeParts,
     modeResolution: modeResolution,
     displayModes: displayModes,

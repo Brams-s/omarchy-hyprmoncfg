@@ -4,26 +4,30 @@ import qs.Ui
 import "Model.js" as Model
 
 // Scale the way Omarchy's own Display panel shows it: one row of preset pills
-// (bordered Button, `active` = current), each preset mapped to a sharp scale
-// hyprmoncfg reports for this display (Model.scaleRow). A trailing More
-// dropdown lists every sharp scale and ends with Custom… for typing one, so
-// none is out of reach. Labels are compact (Model.compactScaleLabels); the
-// value emitted is always the exact scale.
+// (bordered Button, `active` = current) and a trailing More dropdown listing
+// every sharp scale, ending with Custom… for typing one. The pills, the list
+// and every sharpness verdict come from hyprmoncfg's scale_info (computed in
+// Go, see Model.scaleRow); this file only draws them. Labels are compact
+// (Model.compactScaleLabels); the value emitted is always the exact scale.
 //
 // The pills depend only on the mode, so stepping never changes their count. A
 // current scale that is not a preset is shown on the More trigger instead
-// (active, "1.33x"), and one that is not sharp reads "1.33x ⚠" there and
-// "Blurry" in the SCALE header, never colour alone. It is never rewritten.
+// (active, "1.33x"), and a Blurry one reads "1.33x ⚠" there and "Blurry" in
+// the SCALE header, never colour alone. It is never rewritten. Without
+// scale_info (an older daemon) there are no pills and no Custom….
 Column {
   id: root
 
   property var presets: []
   property var allOptions: []
   property string value: ""
-  // Whether value is sharp for the mode, and the mode it is checked against.
+  // Whether value is sharp, from scale_info, and the mode Custom… asks about.
   property bool sharp: true
   property int modeWidth: 0
   property int modeHeight: 0
+  // Custom… needs scale_info; `infos` are its cached replies by scaleInfoKey.
+  property bool customAvailable: false
+  property var infos: ({})
   // Trigger text for More and the header detail, from Model.scaleRow.
   property string moreText: "More"
   property string detail: ""
@@ -42,6 +46,10 @@ Column {
   readonly property bool onMore: !root.presets.some(function(p) { return String(p.value) === root.value })
 
   signal changed(string value)
+  // Typed Custom… scale to apply; the panel sends it with snap_scale.
+  signal customApplied(real value)
+  // scale_info is needed for a typed value on this mode.
+  signal infoNeeded(real value)
   signal resetRequested()
   // Custom… entry closed (applied or cancelled); the panel takes keys back.
   signal customClosed()
@@ -56,7 +64,9 @@ Column {
   }
 
   function openCustom() {
+    if (!root.customAvailable) return
     customInput.text = root.value
+    root.infoNeeded(Number(root.value))
     customEntry.visible = true
     customInput.forceActiveFocus()
     customInput.selectAll()
@@ -68,11 +78,18 @@ Column {
     root.customClosed()
   }
 
+  function entryInfo(text) {
+    var parsed = Model.parseScaleEntry(text)
+    if (parsed.error) return null
+    var info = root.infos[Model.scaleInfoKey(root.modeWidth, root.modeHeight, parsed.value)]
+    return info === undefined ? null : info
+  }
+
   function applyCustom() {
-    var feedback = Model.scaleEntryFeedback(root.modeWidth, root.modeHeight, customInput.text)
+    var feedback = Model.scaleEntryLines(root.modeWidth, root.modeHeight, customInput.text, root.entryInfo(customInput.text))
     if (feedback.apply === null) return
     root.closeCustom()
-    root.changed(Model.formatScale(feedback.apply))
+    root.customApplied(feedback.apply)
   }
 
   onVisibleChanged: if (!visible) closeCustom()
@@ -170,7 +187,7 @@ Column {
       triggerText: root.moreText
       active: root.onMore
       hasCursor: root.hasCursor && root.onMore
-      options: root.allOptions.concat([{ value: "custom", label: "Custom…" }])
+      options: root.customAvailable ? root.allOptions.concat([{ value: "custom", label: "Custom…" }]) : root.allOptions
       value: root.value
       popupParent: root.popupParent
       ownerOpen: root.ownerOpen
@@ -192,7 +209,8 @@ Column {
     width: parent.width
     spacing: Style.spacing.labelGap
 
-    readonly property var feedback: Model.scaleEntryFeedback(root.modeWidth, root.modeHeight, customInput.text)
+    readonly property var feedback: Model.scaleEntryLines(root.modeWidth, root.modeHeight, customInput.text,
+      root.entryInfo(customInput.text))
 
     Text {
       textFormat: Text.PlainText
@@ -215,6 +233,10 @@ Column {
       foreground: root.foreground
       font.family: root.fontFamily
       onAccepted: root.applyCustom()
+      onTextEdited: {
+        var parsed = Model.parseScaleEntry(text)
+        if (!parsed.error) root.infoNeeded(parsed.value)
+      }
       onActiveFocusChanged: if (!activeFocus) root.closeCustom()
       Keys.onEscapePressed: function(event) {
         root.closeCustom()

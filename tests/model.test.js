@@ -864,9 +864,9 @@ test("editor options stay compact and only offer applicable profiles", () => {
   assert.deepEqual(scales, [
     { value: "1", label: "1x", sharp: true },
     { value: "1.33333", label: "1.33x", sharp: true },
-    { value: "1.5", label: "1.5x ⚠", sharp: false },
+    { value: "1.5", label: "1.5x", sharp: true },
     { value: "2", label: "2x", sharp: true }
-  ], "a current scale outside the backend's sharp list is marked")
+  ], "without a scale_info verdict nothing is marked")
 
   const profiles = Model.profileOptions({ profiles: [
     { name: "Desk", connected_enabled_outputs: 2, active: true },
