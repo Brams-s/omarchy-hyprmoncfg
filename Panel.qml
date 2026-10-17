@@ -1333,7 +1333,7 @@ Panel {
     if (!root.rotation || root.rotation.available !== true || root.rotationLockPending) return
     root.lastError = ""
     root.rotationLockPending = true
-    root.send("set_rotation_lock", { locked: locked === true })
+    root.send("set_rotation", { locked: locked === true })
   }
 
   function resetRotation() {
@@ -1482,7 +1482,7 @@ Panel {
       if (method === "edit_profile") root.editPending = false
       if (method === "preview" || method === "commit" || method === "revert") root.previewPending = false
       if (method === "set_profile_auto") root.profileModePending = false
-      if (method === "set_rotation_lock") root.rotationLockPending = false
+      if (method === "set_rotation") root.rotationLockPending = false
       root.lastError = String(envelope.error.message || "hyprmoncfg request failed")
       if (envelope.error.code === "compositor_busy") {
         root.displaysConnecting = true
@@ -1541,7 +1541,7 @@ Panel {
       root.clearPreview(true)
     } else if (method === "set_profile_auto") {
       root.profileModePending = false
-    } else if (method === "set_rotation_lock") {
+    } else if (method === "set_rotation") {
       root.rotationLockPending = false
     } else if (method === "save" || method === "delete") {
       root.requestEditorState()

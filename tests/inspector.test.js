@@ -222,3 +222,8 @@ test("arrows step into Auto, and beside Auto the toggle key locks rotation", () 
   assert.deepEqual(locks, [true])
   assert.deepEqual(edits, [], "the lock is not a draft edit")
 })
+
+test("the rotation lock uses the daemon's set_rotation method", () => {
+  assert.match(qml, /root\.send\("set_rotation", \{ locked: locked === true \}\)/)
+  assert.doesNotMatch(qml, /set_rotation_lock/)
+})

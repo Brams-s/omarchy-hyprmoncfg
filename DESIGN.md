@@ -186,7 +186,7 @@ in the keyboard field order, and Hyprland's terminology.
   starts with **Auto**, which turns the panel with the device and keeps its
   current rotation as upright (shown as, for example, "Upright 270°" in the
   header). Choosing a fixed rotation turns Auto off. Beside Auto the toggle is
-  **Lock**, the live rotation lock (`set_rotation_lock`), not a draft edit; the
+  **Lock**, the live rotation lock (`set_rotation` with `locked`), not a draft edit; the
   header adds "Locked", or "Upright while folded" on a convertible folded as a
   laptop. Reset restores the saved rotation and Auto together. A daemon without
   rotation support shows neither. To flip a panel that rotates automatically,
