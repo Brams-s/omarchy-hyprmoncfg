@@ -10,7 +10,7 @@ The film animates a rebuild of the panel that is checked against real captures, 
 
 Version 2.8 lets you hide the bar icon and open the editor from your own menu, and keeps the panel expanded while you preview a layout. The panel draws your displays as screens on a stage, sizes itself to what it shows, and gives every setting a control that fits it. The companion TUI shares the same design, placement rules and display terminology, with native keyboard-first controls. See the [release notes](design/releases/2.8.0.md) for highlights.
 
-Screenshots show the actual panel with synthetic display/profile data in an isolated capture host, not a live hardware test. The preview above combines two of those renders, the compact panel and the expanded editor, over Omarchy's ristretto wallpaper.
+Screenshots show the actual panel with synthetic display/profile data in an isolated capture host, not a live hardware test. The preview above is one of those renders, the expanded Layout page, shown large over Omarchy's ristretto wallpaper (`tools/render-preview-card.py`).
 
 <details>
 <summary>See the expanded editor</summary>
