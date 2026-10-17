@@ -28,6 +28,9 @@ Item {
   // Fixed trigger text (e.g. "More"); empty shows the current option's label.
   property string triggerText: ""
   property bool hasCursor: false
+  // Selected look on the trigger, like an active pill (Scale's More trigger
+  // when it carries the current value).
+  property bool active: false
   property bool resetVisible: false
   property string resetTooltip: "Reset to loaded profile value"
 
@@ -102,7 +105,9 @@ Item {
 
       readonly property bool focused: activeFocus
       readonly property bool hot: triggerHover.hovered || root.hasCursor
-      color: Style.controlFill(focused, hot, root.foreground, root.accent)
+      color: root.active && !focused && !hot
+        ? Style.selectedFillFor(root.foreground, root.accent)
+        : Style.controlFill(focused, hot, root.foreground, root.accent)
       borderSpec: Border.controlSpec(focused ? "focus" : (hot ? "hover-cursor" : "normal"),
                                      root.foreground, root.accent)
 
@@ -130,7 +135,8 @@ Item {
         anchors.leftMargin: trigger.borderLeft + Style.spacing.controlPaddingX
         anchors.rightMargin: trigger.borderRight + Style.spacing.md
         text: root.triggerText !== "" ? root.triggerText : root.currentLabel()
-        color: root.foreground
+        color: root.active ? Style.selectedStateColor(root.foreground, root.accent) : root.foreground
+        font.bold: root.active
         font.family: root.fontFamily
         font.pixelSize: Style.font.body
         elide: Text.ElideRight

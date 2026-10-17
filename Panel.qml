@@ -2162,7 +2162,7 @@ Panel {
         || sdrMinLuminanceField.input.activeFocus || sdrMaxLuminanceField.input.activeFocus
         || minLuminanceField.input.activeFocus || maxLuminanceField.input.activeFocus
         || maxAvgLuminanceField.input.activeFocus || iccProfileInput.activeFocus
-        || modeDropdown.popupOpen || scaleField.more.popupOpen
+        || modeDropdown.popupOpen || scaleField.more.popupOpen || scaleField.customInput.activeFocus
         || mirrorDropdown.popupOpen || colorManagementDropdown.popupOpen
         || workspaceStrategyDropdown.popupOpen || workspacePersistenceDropdown.popupOpen
       onMoveRequested: function(dx, dy) {
@@ -3040,11 +3040,18 @@ Panel {
                       width: parent.width
                       enabled: root.managedChecked && !!root.selectedOutput && !root.editPending
                       opacity: root.managedChecked ? 1.0 : root.unmanagedOpacity
-                      presets: Model.scalePresets(root.editorDocument.displays, root.selectedOutputKey,
+                      readonly property var row: Model.scaleRow(root.editorDocument.displays, root.selectedOutputKey,
                         root.selectedOutput ? root.selectedOutput.scale : 1,
-                        root.selectedOutput ? root.selectedOutput.width : 0)
-                      allOptions: Model.scaleOptions(root.editorDocument.displays, root.selectedOutputKey,
-                        root.selectedOutput ? root.selectedOutput.scale : 1)
+                        root.selectedOutput ? Number(root.selectedOutput.width || 0) : 0,
+                        root.selectedOutput ? Number(root.selectedOutput.height || 0) : 0)
+                      presets: row.presets
+                      allOptions: row.options
+                      sharp: row.sharp
+                      moreText: row.moreText
+                      detail: row.detail
+                      modeWidth: root.selectedOutput ? Number(root.selectedOutput.width || 0) : 0
+                      modeHeight: root.selectedOutput ? Number(root.selectedOutput.height || 0) : 0
+                      urgent: root.urgent
                       value: root.selectedOutput ? Model.formatScale(root.selectedOutput.scale) : "1"
                       popupParent: keyCatcher
                       ownerOpen: root.opened && root.expanded && !inspectorViewport.moving
@@ -3054,6 +3061,7 @@ Panel {
                       resetVisible: root.outputFieldChanged("scale")
                       resetTooltip: root.outputFieldResetTooltip("display scale")
                       onChanged: function(value) { root.editOutput({ scale: Number(value) }) }
+                      onCustomClosed: Qt.callLater(function() { keyCatcher.forceActiveFocus() })
                       onResetRequested: root.resetOutputField("scale")
                     }
 

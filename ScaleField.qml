@@ -5,16 +5,28 @@ import "Model.js" as Model
 
 // Scale the way Omarchy's own Display panel shows it: one row of preset pills
 // (bordered Button, `active` = current), each preset mapped to a sharp scale
-// hyprmoncfg reports for this display (Model.scalePresets). A trailing More
-// dropdown lists every sharp scale, so none is out of reach. Labels are compact
-// (Model.compactScaleLabels); the value emitted is always the exact scale. An
-// unsharp current scale is its own pill and is never rewritten.
+// hyprmoncfg reports for this display (Model.scaleRow). A trailing More
+// dropdown lists every sharp scale and ends with Custom… for typing one, so
+// none is out of reach. Labels are compact (Model.compactScaleLabels); the
+// value emitted is always the exact scale.
+//
+// The pills depend only on the mode, so stepping never changes their count. A
+// current scale that is not a preset is shown on the More trigger instead
+// (active, "1.33x"), and one that is not sharp reads "1.33x ⚠" there and
+// "Not sharp" in the SCALE header, never colour alone. It is never rewritten.
 Column {
   id: root
 
   property var presets: []
   property var allOptions: []
   property string value: ""
+  // Whether value is sharp for the mode, and the mode it is checked against.
+  property bool sharp: true
+  property int modeWidth: 0
+  property int modeHeight: 0
+  // Trigger text for More and the header detail, from Model.scaleRow.
+  property string moreText: "More"
+  property string detail: ""
   property bool hasCursor: false
   property bool resetVisible: false
   property string resetTooltip: "Reset to loaded profile value"
@@ -22,19 +34,48 @@ Column {
   property bool ownerOpen: true
   property color foreground: Color.popups.text
   property color accent: Color.accent
+  property color urgent: Color.urgent
   property string fontFamily: Style.font.family
   readonly property alias more: moreDropdown
+  readonly property alias customInput: customInput
+  readonly property bool customOpen: customEntry.visible
+  readonly property bool onMore: !root.presets.some(function(p) { return String(p.value) === root.value })
 
   signal changed(string value)
   signal resetRequested()
+  // Custom… entry closed (applied or cancelled); the panel takes keys back.
+  signal customClosed()
 
   spacing: Style.spacing.labelGap
 
   readonly property string currentLabel: {
+    if (root.detail !== "") return root.detail
     for (var i = 0; i < allOptions.length; i++)
       if (String(allOptions[i].value) === root.value) return String(allOptions[i].label)
     return root.value !== "" ? root.value + "x" : ""
   }
+
+  function openCustom() {
+    customInput.text = root.value
+    customEntry.visible = true
+    customInput.forceActiveFocus()
+    customInput.selectAll()
+  }
+
+  function closeCustom() {
+    if (!customEntry.visible) return
+    customEntry.visible = false
+    root.customClosed()
+  }
+
+  function applyCustom() {
+    var feedback = Model.scaleEntryFeedback(root.modeWidth, root.modeHeight, customInput.text)
+    if (feedback.apply === null) return
+    root.closeCustom()
+    root.changed(Model.formatScale(feedback.apply))
+  }
+
+  onVisibleChanged: if (!visible) closeCustom()
 
   Item {
     width: parent.width
@@ -56,7 +97,7 @@ Column {
       anchors.rightMargin: resetAction.visible ? Style.spacing.xxs : 0
       anchors.verticalCenter: parent.verticalCenter
       text: root.currentLabel
-      color: Qt.darker(root.foreground, 1.4)
+      color: root.sharp ? Qt.darker(root.foreground, 1.4) : root.urgent
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       font.bold: true
@@ -78,15 +119,17 @@ Column {
   }
 
   TextMetrics { id: moreText; font.family: root.fontFamily; font.pixelSize: Style.font.body; text: "More" }
+  TextMetrics { id: currentMoreText; font.family: root.fontFamily; font.pixelSize: Style.font.body; font.bold: true; text: root.moreText }
   TextMetrics { id: moreChevron; font.family: root.fontFamily; font.pixelSize: Style.font.body; text: "󰅀" }
 
   Row {
     id: pillRow
     width: parent.width
     spacing: Style.spacing.xs
-    // Sized from the trigger's own text, chevron and paddings, so "More" never elides.
-    readonly property real moreWidth: Math.ceil(moreText.advanceWidth + moreChevron.advanceWidth
-      + Style.spacing.controlPaddingX + Style.spacing.md + Style.spacing.controlGap
+    // Sized from the trigger's own text, chevron and paddings, so neither
+    // "More" nor the current scale it may carry ever elides.
+    readonly property real moreWidth: Math.ceil(Math.max(moreText.advanceWidth, currentMoreText.advanceWidth)
+      + moreChevron.advanceWidth + Style.spacing.controlPaddingX + Style.spacing.md + Style.spacing.controlGap
       + Style.normalBorderWidth * 2 + Style.space(2))
     readonly property int count: Math.max(1, root.presets.length)
     readonly property real cellWidth: Math.max(1,
@@ -103,7 +146,7 @@ Column {
         text: String(modelData.label)
         fontSize: Style.font.caption
         // Omarchy's pill padding when there is room; less, never below one
-        // pixel, when a seventh (current-value) pill narrows the cells.
+        // pixel, when a narrow panel or a wide More trigger narrows the cells.
         horizontalPadding: Math.max(1, Math.min(Style.spacing.xs,
           Math.floor((pillRow.cellWidth - labelMetrics.advanceWidth - Style.normalBorderWidth * 2) / 2)))
         TextMetrics { id: labelMetrics; font.family: root.fontFamily; font.pixelSize: Style.font.caption; text: pill.text }
@@ -124,15 +167,85 @@ Column {
       id: moreDropdown
       width: pillRow.moreWidth
       showLabel: false
-      triggerText: "More"
-      options: root.allOptions
+      triggerText: root.moreText
+      active: root.onMore
+      hasCursor: root.hasCursor && root.onMore
+      options: root.allOptions.concat([{ value: "custom", label: "Custom…" }])
       value: root.value
       popupParent: root.popupParent
       ownerOpen: root.ownerOpen
       enabled: root.enabled
       foreground: root.foreground
       fontFamily: root.fontFamily
-      onChanged: function(value) { root.changed(value) }
+      onChanged: function(value) {
+        if (value === "custom") Qt.callLater(root.openCustom)
+        else root.changed(value)
+      }
+    }
+  }
+
+  // Custom…: type an exact scale. Built from key events (KeyField), never
+  // from Qt's text input, and explained like the TUI's dialog.
+  Column {
+    id: customEntry
+    visible: false
+    width: parent.width
+    spacing: Style.spacing.labelGap
+
+    readonly property var feedback: Model.scaleEntryFeedback(root.modeWidth, root.modeHeight, customInput.text)
+
+    Text {
+      textFormat: Text.PlainText
+      text: "CUSTOM SCALE"
+      color: Qt.darker(root.foreground, 1.4)
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+      font.bold: true
+      topPadding: Math.ceil(font.pixelSize * 0.15)
+    }
+
+    KeyField {
+      id: customInput
+      width: parent.width
+      placeholderText: "1.00"
+      horizontalAlignment: Text.AlignRight
+      maximumLength: 8
+      inputPattern: /\d{0,1}\.?\d{0,5}/
+      enabled: root.enabled
+      foreground: root.foreground
+      font.family: root.fontFamily
+      onAccepted: root.applyCustom()
+      onActiveFocusChanged: if (!activeFocus) root.closeCustom()
+      Keys.onEscapePressed: function(event) {
+        root.closeCustom()
+        event.accepted = true
+      }
+    }
+
+    Repeater {
+      model: customEntry.feedback.lines
+
+      Text {
+        required property var modelData
+        width: customEntry.width
+        textFormat: Text.PlainText
+        wrapMode: Text.Wrap
+        text: String(modelData.text)
+        color: modelData.tone === "ok" ? root.foreground : root.urgent
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        font.bold: modelData.tone !== "ok"
+      }
+    }
+
+    Text {
+      width: parent.width
+      textFormat: Text.PlainText
+      wrapMode: Text.Wrap
+      text: "Enter applies. Esc cancels."
+      color: Qt.darker(root.foreground, 1.4)
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
     }
   }
 }

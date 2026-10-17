@@ -862,11 +862,11 @@ test("the daemon's exact display match drives contextual profile onboarding", ()
 test("editor options stay compact and only offer applicable profiles", () => {
   const scales = Model.scaleOptions([{ key: "panel", scale_options: [1, 1.33333, 2] }], "panel", 1.5)
   assert.deepEqual(scales, [
-    { value: "1", label: "1x" },
-    { value: "1.33333", label: "1.33x" },
-    { value: "1.5", label: "1.5x" },
-    { value: "2", label: "2x" }
-  ])
+    { value: "1", label: "1x", sharp: true },
+    { value: "1.33333", label: "1.33x", sharp: true },
+    { value: "1.5", label: "1.5x ⚠", sharp: false },
+    { value: "2", label: "2x", sharp: true }
+  ], "a current scale outside the backend's sharp list is marked")
 
   const profiles = Model.profileOptions({ profiles: [
     { name: "Desk", connected_enabled_outputs: 2, active: true },

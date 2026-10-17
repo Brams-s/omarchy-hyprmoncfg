@@ -710,8 +710,10 @@ function compactScaleLabels(values) {
 
 // Every sharp scale hyprmoncfg reports for the display (editor_state
 // scale_options), plus the current scale if it is not one of them; exact
-// values in ascending order, compact labels.
-function scaleOptions(editorDisplays, key, current) {
+// values in ascending order, compact labels. A current scale that is not
+// sharp for the mode (modeWidth x modeHeight, when given) is flagged and its
+// label marked with a warning sign, so the warning never relies on colour.
+function scaleOptions(editorDisplays, key, current, modeWidth, modeHeight) {
   var metadata = editorMetadata(editorDisplays, key)
   var values = metadata.scale_options instanceof Array ? metadata.scale_options.slice() : []
   var normalizedCurrent = formatScale(current)
@@ -722,9 +724,12 @@ function scaleOptions(editorDisplays, key, current) {
   if (!found) values.push(Number(current || 1))
   values.sort(function(a, b) { return Number(a) - Number(b) })
   var labels = compactScaleLabels(values)
+  var currentSharp = modeHeight === undefined
+    ? found : scaleIsSharp(modeWidth, modeHeight, current)
   return values.map(function(value) {
     var formatted = formatScale(value)
-    return { value: formatted, label: labels[formatted] }
+    var sharp = formatted !== normalizedCurrent || currentSharp
+    return { value: formatted, label: labels[formatted] + (sharp ? "" : " ⚠"), sharp: sharp }
   })
 }
 
@@ -735,8 +740,9 @@ var scalePresetValues = [1, 1.25, 1.5, 1.6, 2, 3]
 // The preset pills, mapped the way Omarchy's availableScales/cleanScale map
 // them: each preset becomes the smallest sharp scale at or above it (from the
 // backend's list), presets landing on the same sharp scale collapse to the one
-// closest to it, and preset order is kept. The current scale, if it is not
-// one of the pills, is added in value order as its own pill.
+// closest to it, and preset order is kept. The pills depend only on the mode,
+// so stepping never changes how many there are; a current scale that is not a
+// pill is shown on More instead (scaleRow). Every pill is sharp.
 function scalePresets(editorDisplays, key, current, modeWidth) {
   var metadata = editorMetadata(editorDisplays, key)
   var sharp = (metadata.scale_options instanceof Array ? metadata.scale_options : [])
@@ -762,15 +768,114 @@ function scalePresets(editorDisplays, key, current, modeWidth) {
     .sort(function(a, b) { return a.index - b.index })
     .map(function(c) { return c.value })
 
-  var currentText = formatScale(current)
-  if (pills.indexOf(currentText) < 0) {
-    var at = 0
-    while (at < pills.length && Number(pills[at]) < Number(currentText)) at++
-    pills.splice(at, 0, currentText)
-  }
   var labels = compactScaleLabels(scaleOptions(editorDisplays, key, current).map(function(o) { return o.value }))
-  return pills.map(function(value) { return { value: value, label: labels[value] || value + "x" } })
+  return pills.map(function(value) { return { value: value, label: labels[value] || value + "x", sharp: true } })
 }
+
+// What the Scale row shows for the current scale: whether it is one of the
+// pills or sits on More, the More trigger's text, and the SCALE header's
+// detail. An unsharp scale reads "1.33x ⚠" with "Not sharp", never colour alone.
+function scaleRow(editorDisplays, key, current, modeWidth, modeHeight) {
+  var presets = scalePresets(editorDisplays, key, current, modeWidth)
+  var options = scaleOptions(editorDisplays, key, current, modeWidth, modeHeight)
+  var value = formatScale(current)
+  var onMore = !presets.some(function(p) { return p.value === value })
+  var entry = options.filter(function(o) { return o.value === value })[0] || { label: value + "x", sharp: true }
+  var label = entry.sharp ? entry.label : entry.label.replace(/ ⚠$/, "")
+  return {
+    presets: presets,
+    options: options,
+    onMore: onMore,
+    sharp: entry.sharp,
+    moreText: onMore ? label + (entry.sharp ? "" : " ⚠") : "More",
+    detail: entry.sharp ? label : label + " ⚠ Not sharp"
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sharpness, mirrored from hyprmoncfg internal/scaling (Sharp, ClosestSharp,
+// GridScales) for typed Custom… entry. Parity vectors from the Go functions
+// are in tests/scale.test.js. Hyprland corrects scales onto a 1/120 grid; a
+// scale is sharp when width and height divide into whole logical pixels.
+var scaleGridSteps = 120
+var minScale = 0.25
+var maxScale = 4
+
+function roundScale(value) {
+  return Math.round(Number(value) * 100000) / 100000
+}
+
+function sharpAtNumerator(width, height, numerator) {
+  return (scaleGridSteps * width) % numerator === 0 && (scaleGridSteps * height) % numerator === 0
+}
+
+function scaleIsSharp(width, height, value) {
+  var scale = Number(value)
+  if (!isFinite(scale) || scale <= 0) return false
+  scale = roundScale(scale)
+  width = Number(width || 0)
+  height = Number(height || 0)
+  if (width <= 0 || height <= 0) return true
+  if (Number.isInteger(width / scale) && Number.isInteger(height / scale)) return true
+  var numerator = Math.round(scale * scaleGridSteps)
+  if (numerator <= 0 || roundScale(numerator / scaleGridSteps) !== scale) return false
+  return sharpAtNumerator(width, height, numerator)
+}
+
+// The sharp scale nearest to value, from 0.25 to 4; null when there is none.
+function closestSharpScale(width, height, value) {
+  var scale = Number(value)
+  width = Number(width || 0)
+  height = Number(height || 0)
+  if (!isFinite(scale) || scale <= 0 || width <= 0 || height <= 0) return null
+  scale = roundScale(scale)
+  var best = null, bestDistance = Infinity
+  for (var n = Math.ceil(minScale * scaleGridSteps); n <= Math.floor(maxScale * scaleGridSteps); n++) {
+    if (!sharpAtNumerator(width, height, n)) continue
+    var candidate = roundScale(n / scaleGridSteps)
+    var distance = Math.abs(candidate - scale)
+    if (distance < bestDistance) { best = candidate; bestDistance = distance }
+  }
+  return best
+}
+
+// Typed scale entry, validated like the TUI's Custom… dialog and the backend
+// (0.25 to 4, five decimals). Returns { value } or { error }.
+function parseScaleEntry(text) {
+  var raw = String(text === undefined || text === null ? "" : text).trim()
+  if (raw === "") return { error: "scale is required" }
+  if (!/^[+]?(\d+(\.\d+)?|\.\d+)$/.test(raw)) return { error: "scale must be a number" }
+  var scale = Number(raw)
+  if (!isFinite(scale)) return { error: "scale must be a number" }
+  if (scale < minScale || scale > maxScale)
+    return { error: "scale must be between " + formatScale(minScale) + " and " + formatScale(maxScale) }
+  return { value: roundScale(scale) }
+}
+
+// What the Custom… entry says under the field, line for line with the TUI's
+// dialog, and the scale Enter applies: the typed one when it is sharp,
+// otherwise the closest sharp scale.
+function scaleEntryFeedback(width, height, text) {
+  var parsed = parseScaleEntry(text)
+  if (parsed.error) return { error: parsed.error, lines: [{ text: parsed.error, tone: "error" }], apply: null }
+  var value = parsed.value
+  var shown = formatScale(value)
+  var w = Number(width || 0), h = Number(height || 0)
+  if (scaleIsSharp(w, h, value)) {
+    return { apply: value, sharp: true, lines: [{ tone: "ok",
+      text: "Sharp: " + w + " / " + shown + " = " + Math.round(w / value) + ", "
+        + h + " / " + shown + " = " + Math.round(h / value) + " logical px." }] }
+  }
+  var lines = [{ tone: "warning",
+    text: "⚠ Not sharp: final size has fractional px (" + w + " / " + shown + " = " + (w / value).toFixed(2)
+      + ", " + h + " / " + shown + " = " + (h / value).toFixed(2) + ")." }]
+  var closest = closestSharpScale(w, h, value)
+  if (closest === null) return { apply: value, sharp: false, lines: lines }
+  lines.push({ tone: "ok", text: "Closest sharp: " + formatScale(closest) + " -> " + Math.round(w / closest)
+    + " x " + Math.round(h / closest) + " logical px. Enter applies it." })
+  return { apply: closest, sharp: false, lines: lines }
+}
+
 
 function mirrorOptions(profile, selectedKey) {
   var options = [{ value: "", label: "None" }]
@@ -1816,6 +1921,12 @@ if (typeof module !== "undefined") {
     chipTravel: chipTravel,
     workspaceOwners: workspaceOwners,
     chipMoves: chipMoves,
-    compactPanelLayout: compactPanelLayout
+    compactPanelLayout: compactPanelLayout,
+    scaleRow: scaleRow,
+    roundScale: roundScale,
+    scaleIsSharp: scaleIsSharp,
+    closestSharpScale: closestSharpScale,
+    parseScaleEntry: parseScaleEntry,
+    scaleEntryFeedback: scaleEntryFeedback
   }
 }

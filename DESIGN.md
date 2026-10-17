@@ -144,8 +144,20 @@ in the keyboard field order, and Hyprland's terminology.
     `cleanScale`/`availableScales`, each preset becomes the smallest sharp scale
     at or above it; presets that land on the same scale collapse to the closest
     one; preset order is kept; a preset above the largest sharp scale is
-    dropped. A current scale that is not a pill, sharp or not, is added in
-    value order as its own active pill and is never rewritten.
+    dropped. Revised 2026-10-17 (stable scale row): the pills depend only on
+    the mode, so stepping never changes their count. A current scale that is
+    not a pill, sharp or not, is shown on the More trigger instead (active,
+    labelled `1.33x`) and is never rewritten.
+  - Sharpness (2026-10-17): a current scale that is not sharp for the draft
+    mode reads `1.33x ⚠` on More and in the list, and `1.33x ⚠ Not sharp` in
+    the SCALE header, in the urgent colour but never by colour alone, like the
+    TUI's ⚠ and "fractional px". `Model.scaleIsSharp`/`closestSharpScale`
+    mirror `internal/scaling` with parity vectors in `tests/scale.test.js`.
+  - Custom… (2026-10-17) ends the More list, as in the TUI. It opens an exact
+    entry built from key events (`KeyField`), validated like the TUI and the
+    backend (0.25 to 4, five decimals) and explained line for line like the
+    TUI's dialog: sharp sizes, or the fractional size and the closest sharp
+    scale, which Enter applies. Esc cancels.
   - Label rule: two decimals with trailing zeros trimmed and an `x` suffix
     (`1.33x`, `1.07x`, `2x`); if two scales in the same list would share a
     label, both show the exact value. Labels are display only: the stored and

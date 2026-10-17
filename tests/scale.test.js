@@ -41,18 +41,76 @@ test("compact labels: two decimals, zeros trimmed, exact when two would collide"
   assert.equal(options[1].label, "1.07x")
 })
 
-test("More lists every sharp scale; an unsharp current value is its own selected pill", () => {
+test("More lists every sharp scale; a current scale that is not a pill shows on More", () => {
   const all = Model.scaleOptions(displays(STUDIO_4K), "k", 1.5)
   assert.deepEqual(all.map(o => Number(o.value)), STUDIO_4K)
 
-  const current = Model.scalePresets(displays(STUDIO_4K), "k", 1.7, 3840)
-  assert.deepEqual(current.map(p => p.value), ["1", "1.25", "1.5", "1.6", "1.7", "2", "3"])
-  assert.equal(current[4].label, "1.7x")
-  assert.ok(Model.scaleOptions(displays(STUDIO_4K), "k", 1.7).some(o => o.value === "1.7"), "and it is in More")
+  const unsharp = Model.scaleRow(displays(STUDIO_4K), "k", 1.7, 3840, 2160)
+  assert.deepEqual(unsharp.presets.map(p => p.value), ["1", "1.25", "1.5", "1.6", "2", "3"], "no extra pill")
+  assert.equal(unsharp.onMore, true)
+  assert.equal(unsharp.moreText, "1.7x ⚠")
+  assert.equal(unsharp.detail, "1.7x ⚠ Not sharp")
+  assert.equal(unsharp.sharp, false)
+  const listed = unsharp.options.find(o => o.value === "1.7")
+  assert.deepEqual(listed, { value: "1.7", label: "1.7x ⚠", sharp: false }, "and it is in More, marked")
 
-  const sharpNonPreset = Model.scalePresets(displays(STUDIO_4K), "k", 2.66667, 3840)
-  assert.deepEqual(sharpNonPreset.map(p => p.label), ["1x", "1.25x", "1.5x", "1.6x", "2x", "2.67x", "3x"])
-  assert.equal(Model.scalePresets([], "none", 1.25, 0).map(p => p.value).join(), "1.25", "no backend list: the current value only")
+  const sharpNonPreset = Model.scaleRow(displays(STUDIO_4K), "k", 2.66667, 3840, 2160)
+  assert.deepEqual(sharpNonPreset.presets.map(p => p.label), ["1x", "1.25x", "1.5x", "1.6x", "2x", "3x"])
+  assert.equal(sharpNonPreset.moreText, "2.67x")
+  assert.equal(sharpNonPreset.detail, "2.67x")
+  assert.equal(sharpNonPreset.sharp, true)
+
+  const preset = Model.scaleRow(displays(STUDIO_4K), "k", 1.5, 3840, 2160)
+  assert.equal(preset.onMore, false)
+  assert.equal(preset.moreText, "More")
+  assert.equal(preset.detail, "1.5x")
+  assert.ok(preset.presets.every(p => p.sharp))
+  assert.equal(Model.scalePresets([], "none", 1.25, 0).length, 0, "no backend list: no pills, the value sits on More")
+})
+
+test("stepping through every sharp scale never changes the pill count", () => {
+  const options = Model.scaleOptions(displays(STUDIO_4K), "k", 1)
+  let value = "1"
+  const counts = new Set()
+  for (let i = 0; i < 25; i++) {
+    counts.add(Model.scaleRow(displays(STUDIO_4K), "k", Number(value), 3840, 2160).presets.length)
+    value = Model.stepScaleOption(options, value, 1)
+  }
+  assert.deepEqual([...counts], [6])
+})
+
+// Generated from hyprmoncfg internal/scaling Sharp and ClosestSharp (0.25 to 4).
+const SHARP = [{"mode":[3840,2160],"value":0.25,"sharp":true,"closest":0.25},{"mode":[3840,2160],"value":0.5,"sharp":true,"closest":0.5},{"mode":[3840,2160],"value":0.7,"sharp":false,"closest":0.66667},{"mode":[3840,2160],"value":1,"sharp":true,"closest":1},{"mode":[3840,2160],"value":1.07,"sharp":false,"closest":1.06667},{"mode":[3840,2160],"value":1.2,"sharp":true,"closest":1.2},{"mode":[3840,2160],"value":1.25,"sharp":true,"closest":1.25},{"mode":[3840,2160],"value":1.3,"sharp":false,"closest":1.33333},{"mode":[3840,2160],"value":1.33,"sharp":false,"closest":1.33333},{"mode":[3840,2160],"value":1.33333,"sharp":true,"closest":1.33333},{"mode":[3840,2160],"value":1.5,"sharp":true,"closest":1.5},{"mode":[3840,2160],"value":1.6,"sharp":true,"closest":1.6},{"mode":[3840,2160],"value":1.66667,"sharp":true,"closest":1.66667},{"mode":[3840,2160],"value":1.75,"sharp":false,"closest":1.66667},{"mode":[3840,2160],"value":2,"sharp":true,"closest":2},{"mode":[3840,2160],"value":2.4,"sharp":true,"closest":2.4},{"mode":[3840,2160],"value":3,"sharp":true,"closest":3},{"mode":[3840,2160],"value":3.2,"sharp":true,"closest":3.2},{"mode":[3840,2160],"value":3.7,"sharp":false,"closest":3.75},{"mode":[3840,2160],"value":4,"sharp":true,"closest":4},{"mode":[2560,1600],"value":0.25,"sharp":true,"closest":0.25},{"mode":[2560,1600],"value":0.5,"sharp":true,"closest":0.5},{"mode":[2560,1600],"value":0.7,"sharp":false,"closest":0.66667},{"mode":[2560,1600],"value":1,"sharp":true,"closest":1},{"mode":[2560,1600],"value":1.07,"sharp":false,"closest":1.06667},{"mode":[2560,1600],"value":1.2,"sharp":false,"closest":1.25},{"mode":[2560,1600],"value":1.25,"sharp":true,"closest":1.25},{"mode":[2560,1600],"value":1.3,"sharp":false,"closest":1.33333},{"mode":[2560,1600],"value":1.33,"sharp":false,"closest":1.33333},{"mode":[2560,1600],"value":1.33333,"sharp":true,"closest":1.33333},{"mode":[2560,1600],"value":1.5,"sharp":false,"closest":1.6},{"mode":[2560,1600],"value":1.6,"sharp":true,"closest":1.6},{"mode":[2560,1600],"value":1.66667,"sharp":true,"closest":1.66667},{"mode":[2560,1600],"value":1.75,"sharp":false,"closest":1.66667},{"mode":[2560,1600],"value":2,"sharp":true,"closest":2},{"mode":[2560,1600],"value":2.4,"sharp":false,"closest":2.5},{"mode":[2560,1600],"value":3,"sharp":false,"closest":3.2},{"mode":[2560,1600],"value":3.2,"sharp":true,"closest":3.2},{"mode":[2560,1600],"value":3.7,"sharp":false,"closest":4},{"mode":[2560,1600],"value":4,"sharp":true,"closest":4},{"mode":[2256,1504],"value":0.25,"sharp":true,"closest":0.25},{"mode":[2256,1504],"value":0.5,"sharp":true,"closest":0.5},{"mode":[2256,1504],"value":0.7,"sharp":false,"closest":0.66667},{"mode":[2256,1504],"value":1,"sharp":true,"closest":1},{"mode":[2256,1504],"value":1.07,"sharp":false,"closest":1.06667},{"mode":[2256,1504],"value":1.2,"sharp":false,"closest":1.175},{"mode":[2256,1504],"value":1.25,"sharp":false,"closest":1.175},{"mode":[2256,1504],"value":1.3,"sharp":false,"closest":1.33333},{"mode":[2256,1504],"value":1.33,"sharp":false,"closest":1.33333},{"mode":[2256,1504],"value":1.33333,"sharp":true,"closest":1.33333},{"mode":[2256,1504],"value":1.5,"sharp":false,"closest":1.56667},{"mode":[2256,1504],"value":1.6,"sharp":true,"closest":1.6},{"mode":[2256,1504],"value":1.66667,"sharp":false,"closest":1.6},{"mode":[2256,1504],"value":1.75,"sharp":false,"closest":1.6},{"mode":[2256,1504],"value":2,"sharp":true,"closest":2},{"mode":[2256,1504],"value":2.4,"sharp":false,"closest":2.35},{"mode":[2256,1504],"value":3,"sharp":false,"closest":3.13333},{"mode":[2256,1504],"value":3.2,"sharp":true,"closest":3.2},{"mode":[2256,1504],"value":3.7,"sharp":false,"closest":3.91667},{"mode":[2256,1504],"value":4,"sharp":true,"closest":4},{"mode":[1366,768],"value":0.25,"sharp":true,"closest":0.25},{"mode":[1366,768],"value":0.5,"sharp":true,"closest":0.5},{"mode":[1366,768],"value":0.7,"sharp":false,"closest":0.66667},{"mode":[1366,768],"value":1,"sharp":true,"closest":1},{"mode":[1366,768],"value":1.07,"sharp":false,"closest":1},{"mode":[1366,768],"value":1.2,"sharp":false,"closest":1},{"mode":[1366,768],"value":1.25,"sharp":false,"closest":1},{"mode":[1366,768],"value":1.3,"sharp":false,"closest":1},{"mode":[1366,768],"value":1.33,"sharp":false,"closest":1},{"mode":[1366,768],"value":1.33333,"sharp":false,"closest":1},{"mode":[1366,768],"value":1.5,"sharp":false,"closest":1},{"mode":[1366,768],"value":1.6,"sharp":false,"closest":2},{"mode":[1366,768],"value":1.66667,"sharp":false,"closest":2},{"mode":[1366,768],"value":1.75,"sharp":false,"closest":2},{"mode":[1366,768],"value":2,"sharp":true,"closest":2},{"mode":[1366,768],"value":2.4,"sharp":false,"closest":2},{"mode":[1366,768],"value":3,"sharp":false,"closest":2},{"mode":[1366,768],"value":3.2,"sharp":false,"closest":2},{"mode":[1366,768],"value":3.7,"sharp":false,"closest":2},{"mode":[1366,768],"value":4,"sharp":false,"closest":2},{"mode":[2880,1800],"value":0.25,"sharp":true,"closest":0.25},{"mode":[2880,1800],"value":0.5,"sharp":true,"closest":0.5},{"mode":[2880,1800],"value":0.7,"sharp":false,"closest":0.66667},{"mode":[2880,1800],"value":1,"sharp":true,"closest":1},{"mode":[2880,1800],"value":1.07,"sharp":false,"closest":1.125},{"mode":[2880,1800],"value":1.2,"sharp":true,"closest":1.2},{"mode":[2880,1800],"value":1.25,"sharp":true,"closest":1.25},{"mode":[2880,1800],"value":1.3,"sharp":false,"closest":1.33333},{"mode":[2880,1800],"value":1.33,"sharp":false,"closest":1.33333},{"mode":[2880,1800],"value":1.33333,"sharp":true,"closest":1.33333},{"mode":[2880,1800],"value":1.5,"sharp":true,"closest":1.5},{"mode":[2880,1800],"value":1.6,"sharp":true,"closest":1.6},{"mode":[2880,1800],"value":1.66667,"sharp":true,"closest":1.66667},{"mode":[2880,1800],"value":1.75,"sharp":false,"closest":1.8},{"mode":[2880,1800],"value":2,"sharp":true,"closest":2},{"mode":[2880,1800],"value":2.4,"sharp":true,"closest":2.4},{"mode":[2880,1800],"value":3,"sharp":true,"closest":3},{"mode":[2880,1800],"value":3.2,"sharp":false,"closest":3.33333},{"mode":[2880,1800],"value":3.7,"sharp":false,"closest":3.75},{"mode":[2880,1800],"value":4,"sharp":true,"closest":4},{"mode":[1920,1080],"value":0.25,"sharp":true,"closest":0.25},{"mode":[1920,1080],"value":0.5,"sharp":true,"closest":0.5},{"mode":[1920,1080],"value":0.7,"sharp":false,"closest":0.66667},{"mode":[1920,1080],"value":1,"sharp":true,"closest":1},{"mode":[1920,1080],"value":1.07,"sharp":false,"closest":1},{"mode":[1920,1080],"value":1.2,"sharp":true,"closest":1.2},{"mode":[1920,1080],"value":1.25,"sharp":true,"closest":1.25},{"mode":[1920,1080],"value":1.3,"sharp":false,"closest":1.33333},{"mode":[1920,1080],"value":1.33,"sharp":false,"closest":1.33333},{"mode":[1920,1080],"value":1.33333,"sharp":true,"closest":1.33333},{"mode":[1920,1080],"value":1.5,"sharp":true,"closest":1.5},{"mode":[1920,1080],"value":1.6,"sharp":true,"closest":1.6},{"mode":[1920,1080],"value":1.66667,"sharp":true,"closest":1.66667},{"mode":[1920,1080],"value":1.75,"sharp":false,"closest":1.66667},{"mode":[1920,1080],"value":2,"sharp":true,"closest":2},{"mode":[1920,1080],"value":2.4,"sharp":true,"closest":2.4},{"mode":[1920,1080],"value":3,"sharp":true,"closest":3},{"mode":[1920,1080],"value":3.2,"sharp":false,"closest":3.33333},{"mode":[1920,1080],"value":3.7,"sharp":false,"closest":3.75},{"mode":[1920,1080],"value":4,"sharp":true,"closest":4}]
+
+test("sharpness and the closest sharp scale match the backend", () => {
+  for (const v of SHARP) {
+    const [w, h] = v.mode
+    assert.equal(Model.scaleIsSharp(w, h, v.value), v.sharp, w + "x" + h + " @ " + v.value)
+    assert.equal(Model.closestSharpScale(w, h, v.value), v.closest, w + "x" + h + " closest to " + v.value)
+  }
+})
+
+test("Custom… validates like the TUI and explains sharpness the same way", () => {
+  assert.deepEqual(Model.parseScaleEntry(""), { error: "scale is required" })
+  assert.deepEqual(Model.parseScaleEntry("1."), { error: "scale must be a number" })
+  assert.deepEqual(Model.parseScaleEntry("abc"), { error: "scale must be a number" })
+  assert.deepEqual(Model.parseScaleEntry("5"), { error: "scale must be between 0.25 and 4" })
+  assert.deepEqual(Model.parseScaleEntry("0.2"), { error: "scale must be between 0.25 and 4" })
+  assert.deepEqual(Model.parseScaleEntry(" 1.333333 "), { value: 1.33333 })
+
+  const sharp = Model.scaleEntryFeedback(3840, 2160, "1.5")
+  assert.equal(sharp.apply, 1.5)
+  assert.deepEqual(sharp.lines, [{ tone: "ok", text: "Sharp: 3840 / 1.5 = 2560, 2160 / 1.5 = 1440 logical px." }])
+
+  const blurry = Model.scaleEntryFeedback(3840, 2160, "1.33")
+  assert.equal(blurry.apply, 1.33333, "Enter applies the closest sharp scale, as in the TUI")
+  assert.deepEqual(blurry.lines.map(l => l.text), [
+    "⚠ Not sharp: final size has fractional px (3840 / 1.33 = 2887.22, 2160 / 1.33 = 1624.06).",
+    "Closest sharp: 1.33333 -> 2880 x 1620 logical px. Enter applies it."
+  ])
+  const invalid = Model.scaleEntryFeedback(3840, 2160, "9")
+  assert.equal(invalid.apply, null)
+  assert.equal(invalid.lines[0].tone, "error")
 })
 
 test("keyboard steps through the full sharp list like the TUI and stops at the ends", () => {
@@ -91,15 +149,19 @@ test("Scale is Omarchy's pill row plus a More dropdown, fed by the backend list"
   const scale = fs.readFileSync(path.join(__dirname, "..", "ScaleField.qml"), "utf8")
   const dropdown = fs.readFileSync(path.join(__dirname, "..", "PanelDropdown.qml"), "utf8")
   assert.match(qml, /ScaleField \{\s+id: scaleField/)
-  assert.match(qml, /presets: Model\.scalePresets\(root\.editorDocument\.displays, root\.selectedOutputKey,/)
-  assert.match(qml, /allOptions: Model\.scaleOptions\(root\.editorDocument\.displays, root\.selectedOutputKey,/)
+  assert.match(qml, /readonly property var row: Model\.scaleRow\(root\.editorDocument\.displays, root\.selectedOutputKey,/)
+  assert.match(qml, /presets: row\.presets\s+allOptions: row\.options/)
   assert.match(qml, /else if \(field === 2\) scaleField\.more\.open\(\)/)
   assert.match(qml, /scaleField\.more\.popupOpen/)
+  assert.match(qml, /scaleField\.customInput\.activeFocus/, "typing a custom scale holds the panel's keys")
   assert.doesNotMatch(qml, /scaleDropdown/)
   assert.match(scale, /bordered: true/)
   assert.match(scale, /active: String\(modelData\.value\) === root\.value/, "Omarchy's ScalePill marks the current scale as active")
-  assert.match(scale, /triggerText: "More"/)
-  assert.match(scale, /options: root\.allOptions/)
+  assert.match(scale, /triggerText: root\.moreText/)
+  assert.match(scale, /active: root\.onMore/, "More carries an off-preset current scale as active")
+  assert.match(scale, /options: root\.allOptions\.concat\(\[\{ value: "custom", label: "Custom…" \}\]\)/)
+  assert.match(scale, /KeyField \{\s+id: customInput/, "Custom… is built from key events")
+  assert.doesNotMatch(scale, /TextField|TextInput|SpinBox/)
   assert.match(scale, /text: "SCALE"/)
   assert.match(dropdown, /text: root\.triggerText !== "" \? root\.triggerText : root\.currentLabel\(\)/)
 })
