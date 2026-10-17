@@ -42,6 +42,11 @@ Column {
 
   spacing: Style.spacing.labelGap
 
+  // A row whose chips leave no room for the reset beside them shows it in
+  // the header instead, so it never covers the last chip.
+  readonly property bool resetInHeader: root.resetVisible
+    && controls.implicitWidth + Style.space(8) + rowReset.implicitWidth > root.width
+
   function selectedIndex() {
     for (var i = 0; i < options.length; i++)
       if (group.optionValue(options[i]) === value) return i
@@ -51,13 +56,14 @@ Column {
   Item {
     width: parent.width
     visible: root.label !== ""
-    implicitHeight: Math.max(header.implicitHeight, detailText.implicitHeight)
+    implicitHeight: Math.max(header.implicitHeight, detailText.implicitHeight,
+      headerReset.visible ? headerReset.height : 0)
 
     PanelSectionHeader {
       id: header
       anchors.left: parent.left
-      anchors.right: detailText.visible ? detailText.left : parent.right
-      anchors.rightMargin: detailText.visible ? Style.space(8) : 0
+      anchors.right: detailText.visible ? detailText.left : (headerReset.visible ? headerReset.left : parent.right)
+      anchors.rightMargin: detailText.visible || headerReset.visible ? Style.space(8) : 0
       anchors.verticalCenter: parent.verticalCenter
       text: root.label
       elide: Text.ElideRight
@@ -72,11 +78,26 @@ Column {
       }
     }
 
+    PanelActionButton {
+      id: headerReset
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      visible: root.resetInHeader
+      enabled: root.enabled
+      iconText: "󰑐"
+      tooltipText: root.resetTooltip
+      foreground: root.foreground
+      fontFamily: root.fontFamily
+      focusable: true
+      onClicked: root.resetRequested()
+    }
+
     Text {
       id: detailText
       textFormat: Text.PlainText
       visible: root.detail !== ""
-      anchors.right: parent.right
+      anchors.right: headerReset.visible ? headerReset.left : parent.right
+      anchors.rightMargin: headerReset.visible ? Style.space(6) : 0
       anchors.verticalCenter: parent.verticalCenter
       text: root.detail
       color: Qt.darker(root.foreground, 1.4)
@@ -88,7 +109,7 @@ Column {
 
   Item {
     width: parent.width
-    height: Math.max(controls.implicitHeight, resetAction.visible ? resetAction.height : 0)
+    height: Math.max(controls.implicitHeight, rowReset.visible ? rowReset.height : 0)
 
     Row {
       id: controls
@@ -127,10 +148,10 @@ Column {
     }
 
     PanelActionButton {
-      id: resetAction
+      id: rowReset
       anchors.right: parent.right
       anchors.verticalCenter: parent.verticalCenter
-      visible: root.resetVisible
+      visible: root.resetVisible && !root.resetInHeader
       enabled: root.enabled
       iconText: "󰑐"
       tooltipText: root.resetTooltip

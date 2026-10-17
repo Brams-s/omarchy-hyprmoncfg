@@ -189,7 +189,10 @@ in the keyboard field order, and Hyprland's terminology.
   **Lock**, the live rotation lock (`set_rotation_lock`), not a draft edit; the
   header adds "Locked", or "Upright while folded" on a convertible folded as a
   laptop. Reset restores the saved rotation and Auto together. A daemon without
-  rotation support shows neither.
+  rotation support shows neither. To flip a panel that rotates automatically,
+  choose a fixed rotation, set Flipped, then choose Auto again.
+- A choice row whose chips leave no room for the reset shows it in the header,
+  as Scale does, so it never covers the last chip.
 - Kept as they were: Enabled (toggle), Mirror and colour space
   (dropdowns: long or open lists), SDR and display luminance values (exact
   decimal entry with units; the underlying multipliers and nits are not bounded
