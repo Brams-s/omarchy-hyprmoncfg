@@ -164,6 +164,15 @@ in the keyboard field order, and Hyprland's terminology.
     applied value is always the exact sharp scale.
   - Keyboard: arrows step through the full sharp list, as the TUI does; Enter
     opens More. The TUI mirrors the parity vectors in `tests/scale.test.js`.
+- Resolution and Refresh (2026-10-17) replace the single Mode dropdown, as in
+  the TUI and Omarchy's Display panel. RESOLUTION is a dropdown of the
+  display's resolutions, each once, largest first. REFRESH is a `ButtonGroup`
+  of the rates that resolution offers, slowest first, labelled like the cards
+  (`144Hz`). Changing the resolution keeps the rate when the new resolution
+  offers it, otherwise takes its highest. Both send the one `mode` edit; the
+  profile and IPC are unchanged. Keyboard order is Enabled, Resolution (1),
+  Refresh (23), Scale (2), then the rest; arrows on Resolution wrap like the
+  old Mode list, Refresh stops at its ends and Enter wraps.
 - Small closed sets use the shell's `ButtonGroup`, so spacing, hover, focus and
   keys are Omarchy's: VRR (Off, On, Fullscreen), colour depth (8-bit, 10-bit),
   SDR EOTF, and WCG/HDR capability (Force off, Auto-detect, Force on). A value
@@ -181,7 +190,7 @@ in the keyboard field order, and Hyprland's terminology.
   header adds "Locked", or "Upright while folded" on a convertible folded as a
   laptop. Reset restores the saved rotation and Auto together. A daemon without
   rotation support shows neither.
-- Kept as they were: Enabled (toggle), Mode, Mirror and colour space
+- Kept as they were: Enabled (toggle), Mirror and colour space
   (dropdowns: long or open lists), SDR and display luminance values (exact
   decimal entry with units; the underlying multipliers and nits are not bounded
   ranges, so sliders would imply limits that do not exist), and the ICC path.

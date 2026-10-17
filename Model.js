@@ -675,15 +675,6 @@ function initialOutputKey(profile, editorDisplays) {
   return outputs.length ? String((outputs[0] || {}).key || "") : ""
 }
 
-function modeOptions(editorDisplays, key) {
-  var metadata = editorMetadata(editorDisplays, key)
-  var modes = metadata.available_modes instanceof Array ? metadata.available_modes : []
-  return modes.map(function(mode) {
-    var value = String(mode || "")
-    return { value: value, label: formatDisplayMode(value) }
-  })
-}
-
 function formatScale(value) {
   var number = Number(value)
   if (!isFinite(number) || number <= 0) number = 1
@@ -876,6 +867,114 @@ function scaleEntryFeedback(width, height, text) {
   return { apply: closest, sharp: false, lines: lines }
 }
 
+// ---------------------------------------------------------------------------
+// Mode as Resolution plus Refresh, like the TUI and Omarchy's Display panel.
+// Both edit the one stored mode string; nothing new is stored or sent.
+function modeParts(mode) {
+  var match = String(mode || "").trim().match(/^(\d+)x(\d+)(?:@([\d.]+)(?:Hz)?)?$/i)
+  if (!match) return null
+  return { width: Number(match[1]), height: Number(match[2]),
+    refresh: match[3] ? Number(match[3]) : 0, resolution: match[1] + "x" + match[2] }
+}
+
+function modeResolution(mode) {
+  var parts = modeParts(mode)
+  return parts ? parts.resolution : String(mode || "").trim()
+}
+
+// The display's advertised modes with the current one first, each once, as
+// the TUI's editor list has them.
+function displayModes(editorDisplays, key, current) {
+  var metadata = editorMetadata(editorDisplays, key)
+  var modes = metadata.available_modes instanceof Array ? metadata.available_modes : []
+  var seen = {}, result = []
+  ;[String(current || "")].concat(modes.map(String)).forEach(function(mode) {
+    mode = mode.trim()
+    if (mode === "" || seen[mode]) return
+    seen[mode] = true
+    result.push(mode)
+  })
+  return result
+}
+
+// Each resolution once, best first: most pixels, then wider; modes that do
+// not parse keep their order at the end.
+function resolutionOptions(modes) {
+  var seen = {}, list = []
+  ;(modes instanceof Array ? modes : []).forEach(function(mode) {
+    var key = modeResolution(mode)
+    if (key === "" || seen[key]) return
+    seen[key] = true
+    list.push({ key: key, parts: modeParts(mode), order: list.length })
+  })
+  list.sort(function(a, b) {
+    if (!!a.parts !== !!b.parts) return a.parts ? -1 : 1
+    if (!a.parts) return a.order - b.order
+    var area = b.parts.width * b.parts.height - a.parts.width * a.parts.height
+    if (area !== 0) return area
+    if (b.parts.width !== a.parts.width) return b.parts.width - a.parts.width
+    return a.order - b.order
+  })
+  return list.map(function(item) { return { value: item.key, label: item.key } })
+}
+
+function refreshLabel(rate, precision) {
+  var number = Number(rate || 0)
+  if (!(number > 0)) return "Auto"
+  return String(Number(number.toFixed(precision))) + "Hz"
+}
+
+// Rates print like the cards ("144Hz"), with the precision that keeps
+// neighbours apart.
+function refreshLabels(rates) {
+  var labels = []
+  for (var precision = 1; precision <= 3; precision++) {
+    var seen = {}, distinct = true
+    labels = rates.map(function(rate) { return refreshLabel(rate, precision) })
+    labels.forEach(function(label) { if (seen[label]) distinct = false; seen[label] = true })
+    if (distinct) break
+  }
+  return labels
+}
+
+// The rates a resolution offers, slowest first, each rate once (the first
+// mode listing it wins). Values are the exact mode strings to send.
+function refreshOptions(modes, resolution) {
+  var seen = {}, list = []
+  ;(modes instanceof Array ? modes : []).forEach(function(mode) {
+    if (modeResolution(mode) !== resolution) return
+    var parts = modeParts(mode)
+    var rate = parts ? parts.refresh : 0
+    var key = rate.toFixed(2)
+    if (seen[key]) return
+    seen[key] = true
+    list.push({ mode: mode, rate: rate, order: list.length })
+  })
+  list.sort(function(a, b) { return a.rate - b.rate || a.order - b.order })
+  var labels = refreshLabels(list.map(function(item) { return item.rate }))
+  return list.map(function(item, index) { return { value: item.mode, label: labels[index] } })
+}
+
+// The mode a resolution change selects: the previous rate when the new
+// resolution offers it, otherwise its highest. "" when it offers none.
+function modeForResolution(modes, resolution, previousRefresh) {
+  var options = refreshOptions(modes, resolution)
+  if (options.length === 0) return ""
+  for (var i = 0; i < options.length; i++) {
+    var parts = modeParts(options[i].value)
+    if (Math.abs((parts ? parts.refresh : 0) - Number(previousRefresh || 0)) < 0.005) return options[i].value
+  }
+  return options[options.length - 1].value
+}
+
+// Arrows on Resolution step the list and wrap, as Mode did.
+function stepResolutionMode(modes, currentMode, delta) {
+  var options = resolutionOptions(modes)
+  if (options.length === 0) return String(currentMode || "")
+  var next = cycleOptionValue(options, modeResolution(currentMode), delta)
+  var parts = modeParts(currentMode)
+  return modeForResolution(modes, next, parts ? parts.refresh : 0) || String(currentMode || "")
+}
 
 function mirrorOptions(profile, selectedKey) {
   var options = [{ value: "", label: "None" }]
@@ -1866,7 +1965,6 @@ if (typeof module !== "undefined") {
     clampBrightness: clampBrightness,
     brightnessTarget: brightnessTarget,
     initialOutputKey: initialOutputKey,
-    modeOptions: modeOptions,
     formatScale: formatScale,
     scaleOptions: scaleOptions,
     mirrorOptions: mirrorOptions,
@@ -1927,6 +2025,14 @@ if (typeof module !== "undefined") {
     scaleIsSharp: scaleIsSharp,
     closestSharpScale: closestSharpScale,
     parseScaleEntry: parseScaleEntry,
-    scaleEntryFeedback: scaleEntryFeedback
+    scaleEntryFeedback: scaleEntryFeedback,
+    modeParts: modeParts,
+    modeResolution: modeResolution,
+    displayModes: displayModes,
+    resolutionOptions: resolutionOptions,
+    refreshLabels: refreshLabels,
+    refreshOptions: refreshOptions,
+    modeForResolution: modeForResolution,
+    stepResolutionMode: stepResolutionMode
   }
 }

@@ -423,8 +423,13 @@ Panel {
     { value: "color", label: "Color" }
   ]
   // Field 21 is Place beside nearest, 22 is Flipped (part of the transform).
-  readonly property var displayKeyboardFields: [0, 1, 2, 5, 6, 22, 7, 8, 21, 9]
+  // Field 23 (Refresh) was added after 21 and 22; it sits right after Resolution.
+  readonly property var displayKeyboardFields: [0, 1, 23, 2, 5, 6, 22, 7, 8, 21, 9]
   property int placementCursor: 0
+  readonly property var selectedDisplayModes: Model.displayModes(root.editorDocument.displays,
+    root.selectedOutputKey, root.selectedOutput ? Model.outputMode(root.selectedOutput) : "")
+  readonly property var selectedRefreshOptions: Model.refreshOptions(root.selectedDisplayModes,
+    root.selectedOutput ? Model.modeResolution(Model.outputMode(root.selectedOutput)) : "")
   readonly property var colorKeyboardFields: [3, 4, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
   readonly property var vrrOptions: [
     { value: "0", label: "Off" },
@@ -890,8 +895,10 @@ Panel {
     var field = root.keyboardInspectorField
     var edit = ({})
     if (field === 0) edit.enabled = output.enabled === false
-    else if (field === 1) edit.mode = Model.cycleOptionValue(
-      Model.modeOptions(root.editorDocument.displays, root.selectedOutputKey), Model.outputMode(output), delta)
+    else if (field === 1) edit.mode = Model.stepResolutionMode(root.selectedDisplayModes,
+      Model.outputMode(output), delta)
+    else if (field === 23) edit.mode = root.pillStep(root.selectedRefreshOptions,
+      Model.outputMode(output), delta, wrap)
     else if (field === 2) edit.scale = Number(Model.stepScaleOption(
       Model.scaleOptions(root.editorDocument.displays, root.selectedOutputKey, output.scale),
       Model.formatScale(output.scale), delta))
@@ -948,7 +955,7 @@ Panel {
     else if (field === 1) modeDropdown.open()
     else if (field === 2) scaleField.more.open()
     else if (field === 3 || field === 5 || field === 6 || field === 14
-        || field === 18 || field === 19 || field === 22) root.adjustInspectorField(1, true)
+        || field === 18 || field === 19 || field === 22 || field === 23) root.adjustInspectorField(1, true)
     else if (field === 21) root.snapSelectedOutput(Model.placementOptions[root.placementCursor].value)
     else if (field === 4) colorManagementDropdown.open()
     else if (field === 7) positionXField.input.forceActiveFocus()
@@ -2959,7 +2966,8 @@ Panel {
                        positionYField, mirrorDropdown, sdrBrightnessField, sdrSaturationField,
                        sdrMinLuminanceField, sdrMaxLuminanceField, sdrCurveField,
                        minLuminanceField, maxLuminanceField, maxAvgLuminanceField,
-                       forceWideField, forceHdrField, iccProfileInput, placementField, rotationField][root.keyboardInspectorField]
+                       forceWideField, forceHdrField, iccProfileInput, placementField, rotationField,
+                       refreshField][root.keyboardInspectorField]
                     : null
 
                   Column {
@@ -3012,25 +3020,43 @@ Panel {
                       opacity: root.managedChecked ? 1.0 : root.unmanagedOpacity
                       readonly property real cellWidth: Model.gridCellWidth(width, spacing, 2)
 
+                      // Mode is edited as Resolution plus Refresh, as in the TUI and
+                      // Omarchy's Display panel; both send the one stored mode.
                       PanelDropdown {
                         id: modeDropdown
                         popupParent: keyCatcher
                         ownerOpen: root.opened && root.expanded && !inspectorViewport.moving
                         width: parent.width
-                        label: "MODE"
-                        options: Model.modeOptions(root.editorDocument.displays, root.selectedOutputKey)
-                        value: root.selectedOutput ? Model.outputMode(root.selectedOutput) : ""
+                        label: "RESOLUTION"
+                        options: Model.resolutionOptions(root.selectedDisplayModes)
+                        value: root.selectedOutput ? Model.modeResolution(Model.outputMode(root.selectedOutput)) : ""
                         enabled: !!root.selectedOutput && !root.editPending
                         hasCursor: root.inspectorHasCursor(1)
                         foreground: root.foreground
                         fontFamily: root.fontFamily
                         resetVisible: root.outputFieldChanged("mode")
                         resetTooltip: root.outputFieldResetTooltip("display mode")
-                        onChanged: function(value) { root.editOutput({ mode: value }) }
+                        onChanged: function(value) {
+                          var mode = Model.modeForResolution(root.selectedDisplayModes, value,
+                            root.selectedOutput ? Number(root.selectedOutput.refresh || 0) : 0)
+                          if (mode !== "") root.editOutput({ mode: mode })
+                        }
                         onResetRequested: root.resetOutputField("mode")
                       }
+                    }
 
-
+                    SegmentedField {
+                      id: refreshField
+                      width: parent.width
+                      enabled: root.managedChecked && !!root.selectedOutput && !root.editPending
+                      opacity: root.managedChecked ? 1.0 : root.unmanagedOpacity
+                      label: "REFRESH"
+                      options: root.selectedRefreshOptions
+                      value: root.selectedOutput ? Model.outputMode(root.selectedOutput) : ""
+                      hasCursor: root.inspectorHasCursor(23)
+                      foreground: root.foreground
+                      fontFamily: root.fontFamily
+                      onChanged: function(value) { root.editOutput({ mode: value }) }
                     }
 
                     // Omarchy's Display panel shows scale as preset pills; More lists every

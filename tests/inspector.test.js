@@ -134,16 +134,18 @@ test("keyboard: Enter on a segmented field advances it; Position focuses exact e
 })
 
 test("the inspector wires every field into keyboard order and scroll-into-view", () => {
-  assert.match(qml, /readonly property var displayKeyboardFields: \[0, 1, 2, 5, 6, 22, 7, 8, 21, 9\]/)
+  assert.match(qml, /readonly property var displayKeyboardFields: \[0, 1, 23, 2, 5, 6, 22, 7, 8, 21, 9\]/)
   assert.match(qml, /readonly property var colorKeyboardFields: \[3, 4, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20\]/)
   const list = qml.match(/\? \[(displayEnabledToggle[\s\S]*?)\]\[root\.keyboardInspectorField\]/)[1]
     .split(",").map(s => s.trim())
-  assert.equal(list.length, 23)
+  assert.equal(list.length, 24)
   assert.equal(list[21], "placementField")
   assert.equal(list[22], "rotationField")
+  assert.equal(list[23], "refreshField")
+  assert.equal(list[1], "modeDropdown")
   assert.equal(list[2], "scaleField")
   assert.equal(list[7], "positionXField")
-  for (const id of ["vrrField", "rotationField", "bitdepthField", "sdrCurveField", "forceWideField", "forceHdrField"])
+  for (const id of ["refreshField", "vrrField", "rotationField", "bitdepthField", "sdrCurveField", "forceWideField", "forceHdrField"])
     assert.match(qml, new RegExp("SegmentedField \\{\\s+id: " + id))
   for (const id of ["positionXField", "positionYField"])
     assert.match(qml, new RegExp("CoordinateField \\{\\s+id: " + id))
