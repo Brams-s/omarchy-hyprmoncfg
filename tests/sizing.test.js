@@ -236,6 +236,6 @@ test("the compact view binds its height and scrolling to the Model", () => {
   assert.match(footer, /text: "Create profile"/)
   assert.match(footer, /"Resume automatic matching"/)
   // The keyboard cursor's row and a newly shown Keep/Revert bar are revealed.
-  assert.match(qml, /currentField: !root\.cursorActive \? null\s+: \(root\.cursorIndex === -1 \? compactTextSize\s+: \(root\.cursorIndex === 0 \? compactManagedToggle\s+: compactActionRows\.itemAt\(root\.cursorIndex - 1\)\)\)/)
+  assert.match(qml, /currentField: !root\.cursorActive \? null\s+: \(root\.cursorIndex < 0\s+\? \(Model\.compactTopRow\(root\.compactTopRows, root\.cursorIndex\) === "terminal" \? compactTerminalSize : compactTextSize\)\s+: \(root\.cursorIndex === 0 \? compactManagedToggle\s+: compactActionRows\.itemAt\(root\.cursorIndex - 1\)\)\)/)
   assert.match(qml, /onVisibleChanged: if \(visible\) Qt\.callLater\(function\(\) \{ compactBody\.reveal\(compactDraftBar\) \}\)/)
 })

@@ -1730,13 +1730,18 @@ function stepScaleOption(options, current, delta) {
 // It is live desktop state like brightness: never part of a profile.
 var textSizeStops = [9, 10, 11, 12, 14, 16, 20]
 
-function nearestTextStop(px) {
+// Index of the stop closest to value; a tie keeps the lower stop.
+function nearestStop(stops, value) {
   var best = 0, bestDistance = Infinity
-  for (var i = 0; i < textSizeStops.length; i++) {
-    var distance = Math.abs(textSizeStops[i] - Number(px))
+  for (var i = 0; i < stops.length; i++) {
+    var distance = Math.abs(stops[i] - Number(value))
     if (distance < bestDistance) { bestDistance = distance; best = i }
   }
   return best
+}
+
+function nearestTextStop(px) {
+  return nearestStop(textSizeStops, px)
 }
 
 // Stop index the slider shows: the pending choice while a change is in
@@ -1758,6 +1763,49 @@ function steppedTextIndex(index, delta) {
 // The pending choice is dropped once the live base size lands on it.
 function textPreviewSettled(previewIndex, baseSize) {
   return previewIndex >= 0 && nearestTextStop(baseSize) === previewIndex
+}
+
+// ---------------------------------------------------------------------------
+// Terminal font size: the terminals' font alone, through Omarchy's
+// omarchy-terminal-font-size, in points. Text size above sets it too, in
+// proportion, so a size chosen here lasts until the next text size change.
+var terminalSizeStops = [8, 9, 10, 11, 12, 14, 16, 18]
+
+// The command prints the size in points, or nothing without a terminal config.
+function parseTerminalSize(text) {
+  var size = Number(String(text || "").trim())
+  return isFinite(size) && size > 0 ? size : 0
+}
+
+function terminalStopIndex(previewIndex, size) {
+  return previewIndex >= 0 ? Math.min(previewIndex, terminalSizeStops.length - 1) : nearestStop(terminalSizeStops, size)
+}
+
+function terminalSizeLabel(previewIndex, size) {
+  return (previewIndex >= 0 ? terminalSizeStops[Math.min(previewIndex, terminalSizeStops.length - 1)] : Number(size)) + "pt"
+}
+
+function steppedTerminalIndex(index, delta) {
+  return Math.max(0, Math.min(terminalSizeStops.length - 1, Number(index) + Number(delta || 0)))
+}
+
+// Rows above Management in the compact key model, top to bottom. Cursor
+// indexes below zero count up to them: -1 is the last, -rows.length the first.
+function compactTopRows(textSizeAvailable, terminalSizeAvailable) {
+  var rows = []
+  if (textSizeAvailable) rows.push("textsize")
+  if (terminalSizeAvailable) rows.push("terminal")
+  return rows
+}
+
+function compactTopRow(rows, cursorIndex) {
+  var index = rows.length + Number(cursorIndex)
+  return cursorIndex < 0 && index >= 0 ? rows[index] : ""
+}
+
+function compactTopIndex(rows, id) {
+  var index = rows.indexOf(id)
+  return index < 0 ? 0 : index - rows.length
 }
 
 // Hyprland's animations:enabled (hyprctl -j getoption) is the desktop's motion
@@ -1951,6 +1999,15 @@ if (typeof module !== "undefined") {
     expandedPanelLayout: expandedPanelLayout,
     panelResizeAllowed: panelResizeAllowed,
     textSizeStops: textSizeStops,
+    nearestStop: nearestStop,
+    terminalSizeStops: terminalSizeStops,
+    parseTerminalSize: parseTerminalSize,
+    terminalStopIndex: terminalStopIndex,
+    terminalSizeLabel: terminalSizeLabel,
+    steppedTerminalIndex: steppedTerminalIndex,
+    compactTopRows: compactTopRows,
+    compactTopRow: compactTopRow,
+    compactTopIndex: compactTopIndex,
     nearestTextStop: nearestTextStop,
     textStopIndex: textStopIndex,
     textSizeLabel: textSizeLabel,

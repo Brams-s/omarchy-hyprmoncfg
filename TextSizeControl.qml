@@ -9,11 +9,15 @@ import "Model.js" as Model
 // only when the knob is released. It is a desktop-wide live setting (shell base
 // font, GTK text scaling and terminal font) that Omarchy owns; this control
 // only asks Omarchy's command to change it, and nothing is stored in a profile.
+// The TERMINAL row is the same control over the terminal font alone, in pt.
 Column {
   id: root
 
   property var bar: null
-  // Pending stop while a change is in flight; -1 follows the live base size.
+  property string title: "TEXT SIZE"
+  property var stops: Model.textSizeStops
+  property string unit: "px"
+  // Pending stop while a change is in flight; -1 follows the live size.
   property int previewIndex: -1
   property int baseSize: Style.font.baseSize
   property bool hasCursor: false
@@ -23,32 +27,32 @@ Column {
   property string fontFamily: Style.font.family
   readonly property alias dragging: slider.dragging
 
-  signal committed(int pixels)
+  signal committed(int size)
   signal hoveredRow()
 
   spacing: Style.space(5)
 
   Item {
     width: parent.width
-    implicitHeight: Math.max(title.implicitHeight, pixels.implicitHeight)
+    implicitHeight: Math.max(header.implicitHeight, valueLabel.implicitHeight)
 
     PanelSectionHeader {
-      id: title
+      id: header
       anchors.left: parent.left
       anchors.verticalCenter: parent.verticalCenter
-      text: "TEXT SIZE"
+      text: root.title
       foreground: root.foreground
       fontFamily: root.fontFamily
     }
 
     Text {
-      id: pixels
+      id: valueLabel
       textFormat: Text.PlainText
       anchors.right: parent.right
       anchors.verticalCenter: parent.verticalCenter
-      text: slider.dragging
-        ? Model.textSizeStops[Math.round(slider.liveValue)] + "px"
-        : Model.textSizeLabel(root.previewIndex, root.baseSize)
+      text: (slider.dragging ? root.stops[Math.round(slider.liveValue)]
+        : root.previewIndex >= 0 ? root.stops[Math.min(root.previewIndex, root.stops.length - 1)]
+        : root.baseSize) + root.unit
       color: root.dim
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
@@ -70,12 +74,13 @@ Column {
       anchors.leftMargin: Style.space(2)
       anchors.rightMargin: Style.space(2)
       minimum: 0
-      maximum: Model.textSizeStops.length - 1
+      maximum: root.stops.length - 1
       step: 1
       integer: true
-      tickCount: Model.textSizeStops.length
-      value: Model.textStopIndex(root.previewIndex, root.baseSize)
-      onReleased: function(next) { root.committed(Model.textSizeStops[Math.round(next)]) }
+      tickCount: root.stops.length
+      value: root.previewIndex >= 0 ? Math.min(root.previewIndex, root.stops.length - 1)
+        : Model.nearestStop(root.stops, root.baseSize)
+      onReleased: function(next) { root.committed(root.stops[Math.round(next)]) }
     }
 
     HoverHandler { onHoveredChanged: if (hovered) root.hoveredRow() }

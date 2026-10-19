@@ -66,6 +66,7 @@ A small background service is what watches for this. It catches hotplug, lid and
 - Per-display brightness for the monitor selected on the layout, using Omarchy's own internal-backlight, DDC/CI, and Apple Display support
 - Brightness stays live hardware state rather than being stored in layout profiles, and changes made by Omarchy's panel or brightness keys remain compatible
 - Text size, the same desktop-wide control as Omarchy's Display panel (shell, GTK apps and terminals together), directly under Brightness. It runs Omarchy's `omarchy-display-text-size`, is live desktop state rather than part of a profile, and is hidden when that command is not installed
+- Terminal, directly under Text size, sets the terminal font alone (Alacritty, Ghostty, Kitty and Foot) and leaves the rest of the desktop alone. It runs Omarchy's `omarchy-terminal-font-size`, or the panel's copy of it until an Omarchy release includes the command. Text size still sets terminals in proportion, so a Terminal size lasts until the next Text size change
 
 **Keyboard controls**
 

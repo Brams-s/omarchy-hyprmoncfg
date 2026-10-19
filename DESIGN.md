@@ -65,6 +65,22 @@ change rescales the whole content-sized panel, so hover cannot move the keyboard
 cursor until the reflow settles (300 ms), and nothing is applied mid-drag. The
 TUI has no counterpart: a terminal's text size is the terminal's.
 
+Terminal (decided 2026-10-19, Carmine) sits directly under Text size and is the
+same control over the terminal font alone: `TERMINAL` with the pt value
+right-aligned, stops 8, 9, 10, 11, 12, 14, 16 and 18 pt, applied on release. It
+runs Omarchy's `omarchy-terminal-font-size <pt>` (omacom/omarchy#15896), which sets
+Alacritty, Ghostty, Kitty and Foot and leaves the shell and GTK alone. Until an
+Omarchy release ships that command, the panel runs its copy in
+`bin/omarchy-terminal-font-size`, only when Omarchy is installed; delete the copy
+once a release has it. The panel reads the size back from the command after
+every Terminal or Text size change, since Text size sets the terminal too, in
+proportion: a size chosen here lasts until the next Text size change, as on the
+command line. The row is hidden when the command reports no terminal config. In
+the compact key model the rows above Management are Text size then Terminal, so
+Up from Management reaches Terminal first; Left and Right step either one. Like
+Text size, it is live desktop state, never part of a profile, a draft or the IPC,
+and the TUI has no counterpart.
+
 ## Expanded view
 
 Use **1 Layout · 2 Workspaces · 3 Profiles** in both clients. Main tabs use at least

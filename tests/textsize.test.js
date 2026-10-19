@@ -71,10 +71,10 @@ test("without Omarchy's command nothing runs and the row is unreachable", () => 
   assert.deepEqual(Array.from(proc.command), [])
   assert.equal(proc.running, false)
 
-  const cursor = { cursorIndex: 0, cursorActive: false, textSizeAvailable: false, itemCount: () => 2 }
+  const cursor = { cursorIndex: 0, cursorActive: false, compactTopRows: Model.compactTopRows(false, false), itemCount: () => 2 }
   panelFunction("moveCursor", cursor)(-1)
   assert.equal(cursor.cursorIndex, 0)
-  cursor.textSizeAvailable = true
+  cursor.compactTopRows = Model.compactTopRows(true, false)
   panelFunction("moveCursor", cursor)(-1)
   assert.equal(cursor.cursorIndex, -1, "Text size is the row above Management")
   panelFunction("moveCursor", cursor)(-1)
@@ -88,7 +88,8 @@ test("the panel delegates to Omarchy, writes nothing itself, and keeps text size
   assert.doesNotMatch(qml, /shell\.toml|text-scaling-factor|gsettings/)
   assert.doesNotMatch(read("Model.js"), /shell\.toml|text-scaling-factor|gsettings/)
   assert.match(qml, /TextSizeControl \{\s+id: compactTextSize\s+visible: root\.textSizeAvailable/)
-  assert.match(qml, /else if \(!root\.expanded && dx !== 0 && root\.cursorIndex === -1\) root\.adjustTextSize\(dx\)/)
+  assert.match(qml, /else if \(!root\.expanded && dx !== 0 && root\.cursorIndex < 0\) root\.adjustCompactTopRow\(dx\)/)
+  assert.match(qml, /if \(row === "textsize"\) root\.adjustTextSize\(deltaSteps\)/)
   // Compact only, directly under Brightness.
   assert.ok(qml.indexOf("BrightnessControl {") < qml.indexOf("TextSizeControl {"))
   assert.ok(qml.indexOf("TextSizeControl {") < qml.indexOf('text: "MONITOR MANAGEMENT"'))
@@ -105,15 +106,17 @@ test("reflow care: hover cannot move the cursor while the base size lands", () =
   assert.match(qml, /onEntered: \{\s+if \(root\.reflowingText\) return/)
   assert.match(qml, /id: reflowSettle\s+interval: 300/)
   assert.match(qml, /function onFontBaseSizeChanged\(\) \{\s+root\.markReflowing\(\)\s+if \(Model\.textPreviewSettled\(root\.textSizePreviewIndex, Style\.font\.baseSize\)\)\s+root\.textSizePreviewIndex = -1/)
-  assert.match(qml, /onExited: function\(exitCode\) \{ if \(exitCode !== 0\) root\.textSizePreviewIndex = -1 \}/)
+  assert.match(qml, /onExited: function\(exitCode\) \{\s+if \(exitCode !== 0\) root\.textSizePreviewIndex = -1/)
 })
 
 test("the control is Omarchy's notched slider, applied on release", () => {
-  assert.match(control, /text: "TEXT SIZE"/)
+  assert.match(control, /property string title: "TEXT SIZE"/)
+  assert.match(control, /property var stops: Model\.textSizeStops/)
+  assert.match(control, /property string unit: "px"/)
   assert.match(control, /PanelSlider \{/)
-  assert.match(control, /tickCount: Model\.textSizeStops\.length/)
-  assert.match(control, /maximum: Model\.textSizeStops\.length - 1/)
-  assert.match(control, /onReleased: function\(next\) \{ root\.committed\(Model\.textSizeStops\[Math\.round\(next\)\]\) \}/)
+  assert.match(control, /tickCount: root\.stops\.length/)
+  assert.match(control, /maximum: root\.stops\.length - 1/)
+  assert.match(control, /onReleased: function\(next\) \{ root\.committed\(root\.stops\[Math\.round\(next\)\]\) \}/)
   assert.doesNotMatch(control, /onMoved/, "dragging previews the number only; nothing is applied mid-drag")
   assert.doesNotMatch(control, /Process \{|\.command\b/, "the control runs nothing; the panel owns the command")
 })

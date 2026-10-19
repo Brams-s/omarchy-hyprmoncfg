@@ -1610,9 +1610,16 @@ Panel {
 
   function moveCursor(delta) {
     root.cursorActive = true
-    // Row -1 is Text size, above Management, when Omarchy's command exists.
-    root.cursorIndex = Math.max(root.textSizeAvailable ? -1 : 0,
+    // Rows below 0 are Text size and Terminal, above Management, when their
+    // commands exist.
+    root.cursorIndex = Math.max(0 - root.compactTopRows.length,
       Math.min(root.itemCount() - 1, root.cursorIndex + delta))
+  }
+
+  function adjustCompactTopRow(deltaSteps) {
+    var row = Model.compactTopRow(root.compactTopRows, root.cursorIndex)
+    if (row === "textsize") root.adjustTextSize(deltaSteps)
+    else if (row === "terminal") root.adjustTerminalSize(deltaSteps)
   }
 
   // ---- Text size: Omarchy's desktop-wide setting, changed only through
@@ -1652,6 +1659,52 @@ Panel {
     root.setTextSize(Model.textSizeStops[index])
   }
 
+  // ---- Terminal font size: the terminals' font alone, through Omarchy's
+  // omarchy-terminal-font-size. Until an Omarchy release ships it, the copy in
+  // bin/ runs instead, and only on Omarchy. Text size sets it too, in
+  // proportion, so it is read again after every text size change. Live
+  // desktop state like text size: never part of a profile.
+  property int terminalSize: 0
+  property int terminalSizePreviewIndex: -1
+  property bool terminalSizeReadPending: false
+  readonly property bool terminalSizeAvailable: terminalSize > 0
+  readonly property string bundledTerminalSizeCommand:
+    decodeURIComponent(String(Qt.resolvedUrl("bin/omarchy-terminal-font-size")).replace(/^file:\/\//, ""))
+  readonly property var compactTopRows: Model.compactTopRows(textSizeAvailable, terminalSizeAvailable)
+  onCompactTopRowsChanged: {
+    if (root.cursorIndex < -root.compactTopRows.length) root.cursorIndex = -root.compactTopRows.length
+  }
+
+  function terminalSizeCommand(args) {
+    return ["sh", "-c",
+      "if command -v omarchy-terminal-font-size >/dev/null 2>&1; then exec omarchy-terminal-font-size \"$@\"; "
+        + "elif command -v omarchy-cmd-present >/dev/null 2>&1; then exec bash \"$0\" \"$@\"; fi",
+      root.bundledTerminalSizeCommand].concat(args || [])
+  }
+
+  function readTerminalSize() {
+    if (terminalSizeReader.running) {
+      root.terminalSizeReadPending = true
+      return
+    }
+    terminalSizeReader.command = root.terminalSizeCommand([])
+    terminalSizeReader.running = true
+  }
+
+  function setTerminalSize(points) {
+    if (!root.terminalSizeAvailable) return
+    root.terminalSizePreviewIndex = Model.nearestStop(Model.terminalSizeStops, points)
+    terminalSizeProcess.command = root.terminalSizeCommand([String(points)])
+    if (!terminalSizeProcess.running) terminalSizeProcess.running = true
+  }
+
+  function adjustTerminalSize(deltaSteps) {
+    if (!root.terminalSizeAvailable) return
+    var index = Model.steppedTerminalIndex(
+      Model.terminalStopIndex(root.terminalSizePreviewIndex, root.terminalSize), deltaSteps)
+    root.setTerminalSize(Model.terminalSizeStops[index])
+  }
+
   function checkMotionPreference() {
     if (motionProbe.running) return
     motionProbe.command = ["hyprctl", "-j", "getoption", "animations:enabled"]
@@ -1663,7 +1716,7 @@ Panel {
       root.install()
       return
     }
-    if (root.cursorIndex === -1) return
+    if (root.cursorIndex < 0) return
     if (root.cursorIndex === 0) {
       root.setManaged(!root.managedChecked)
       return
@@ -1683,6 +1736,7 @@ Panel {
   Component.onCompleted: {
     root.checkInstallation()
     root.checkTextSizeCommand()
+    root.readTerminalSize()
     root.restorePanelExpanded()
   }
   onActivePageChanged: {
@@ -1715,6 +1769,7 @@ Panel {
       root.workspaceKeyboardIndex = 0
       root.checkInstallation()
       root.checkTextSizeCommand()
+      root.readTerminalSize()
       root.checkMotionPreference()
       if (root.compatible) root.checkServiceState()
       if (root.backendConnected) root.requestEditorState()
@@ -1910,7 +1965,33 @@ Panel {
     id: textSizeProcess
     stdout: StdioCollector { waitForEnd: true }
     // A failed change leaves the live size where it was; follow it again.
-    onExited: function(exitCode) { if (exitCode !== 0) root.textSizePreviewIndex = -1 }
+    // Either way the terminal font may have moved with it.
+    onExited: function(exitCode) {
+      if (exitCode !== 0) root.textSizePreviewIndex = -1
+      root.readTerminalSize()
+    }
+  }
+
+  Process {
+    id: terminalSizeReader
+    stdout: StdioCollector {
+      id: terminalSizeOutput
+      waitForEnd: true
+      onStreamFinished: {
+        root.terminalSize = Model.parseTerminalSize(terminalSizeOutput.text)
+        root.terminalSizePreviewIndex = -1
+        if (root.terminalSizeReadPending) {
+          root.terminalSizeReadPending = false
+          root.readTerminalSize()
+        }
+      }
+    }
+  }
+
+  // The size is read back afterwards, which also drops the pending stop.
+  Process {
+    id: terminalSizeProcess
+    onExited: root.readTerminalSize()
   }
 
   Process {
@@ -2233,7 +2314,7 @@ Panel {
         || workspaceStrategyDropdown.popupOpen || workspacePersistenceDropdown.popupOpen
       onMoveRequested: function(dx, dy) {
         if (!root.expanded && dy !== 0) root.moveCursor(dy)
-        else if (!root.expanded && dx !== 0 && root.cursorIndex === -1) root.adjustTextSize(dx)
+        else if (!root.expanded && dx !== 0 && root.cursorIndex < 0) root.adjustCompactTopRow(dx)
         else if (root.expanded) root.handleExpandedMove(dx, dy)
       }
       onReturnRequested: returnPressed = true
@@ -2377,7 +2458,8 @@ Panel {
           formHeight: compactBodyColumn.implicitHeight
           // The keyboard cursor's row is scrolled into view.
           currentField: !root.cursorActive ? null
-            : (root.cursorIndex === -1 ? compactTextSize
+            : (root.cursorIndex < 0
+              ? (Model.compactTopRow(root.compactTopRows, root.cursorIndex) === "terminal" ? compactTerminalSize : compactTextSize)
               : (root.cursorIndex === 0 ? compactManagedToggle
                 : compactActionRows.itemAt(root.cursorIndex - 1)))
 
@@ -2562,7 +2644,7 @@ Panel {
                 }
               }
 
-              PanelSeparator { visible: root.brightnessConnector !== "" || root.textSizeAvailable; foreground: root.foreground }
+              PanelSeparator { visible: root.brightnessConnector !== "" || root.compactTopRows.length > 0; foreground: root.foreground }
 
               BrightnessControl {
                 visible: root.brightnessConnector !== ""
@@ -2584,7 +2666,7 @@ Panel {
                 }
               }
 
-              PanelSeparator { visible: root.textSizeAvailable && root.brightnessConnector !== ""; foreground: root.foreground }
+              PanelSeparator { visible: root.compactTopRows.length > 0 && root.brightnessConnector !== ""; foreground: root.foreground }
 
               TextSizeControl {
                 id: compactTextSize
@@ -2592,15 +2674,37 @@ Panel {
                 width: parent.width
                 bar: root.bar
                 previewIndex: root.textSizePreviewIndex
-                hasCursor: root.cursorActive && root.cursorIndex === -1
+                hasCursor: root.cursorActive && Model.compactTopRow(root.compactTopRows, root.cursorIndex) === "textsize"
                 foreground: root.foreground
                 dim: root.dim
                 accent: Commons.Color.accent
                 fontFamily: root.fontFamily
-                onCommitted: function(pixels) { root.setTextSize(pixels) }
+                onCommitted: function(size) { root.setTextSize(size) }
                 onHoveredRow: if (!root.reflowingText) {
                   root.cursorActive = true
-                  root.cursorIndex = -1
+                  root.cursorIndex = Model.compactTopIndex(root.compactTopRows, "textsize")
+                }
+              }
+
+              TextSizeControl {
+                id: compactTerminalSize
+                visible: root.terminalSizeAvailable
+                width: parent.width
+                bar: root.bar
+                title: "TERMINAL"
+                stops: Model.terminalSizeStops
+                unit: "pt"
+                baseSize: root.terminalSize
+                previewIndex: root.terminalSizePreviewIndex
+                hasCursor: root.cursorActive && Model.compactTopRow(root.compactTopRows, root.cursorIndex) === "terminal"
+                foreground: root.foreground
+                dim: root.dim
+                accent: Commons.Color.accent
+                fontFamily: root.fontFamily
+                onCommitted: function(size) { root.setTerminalSize(size) }
+                onHoveredRow: if (!root.reflowingText) {
+                  root.cursorActive = true
+                  root.cursorIndex = Model.compactTopIndex(root.compactTopRows, "terminal")
                 }
               }
 
