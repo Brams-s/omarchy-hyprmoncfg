@@ -537,10 +537,10 @@ test("a confirmed manual override is current when duplicate profile states are a
   assert.equal(Model.profileMatchLabel(document.profiles[0], true), "Active · score 300")
 })
 
-test("version compatibility accepts the IPC release and development builds", () => {
+test("version compatibility requires a known release", () => {
   assert.equal(Model.versionAtLeast("hyprmoncfg 1.12.0 (abc)", "1.12.0"), true)
   assert.equal(Model.versionAtLeast("hyprmoncfg v1.12.3", "1.12.0"), true)
-  assert.equal(Model.versionAtLeast("hyprmoncfg dev", "1.12.0"), true)
+  assert.equal(Model.versionAtLeast("hyprmoncfg dev", "1.12.0"), false)
   assert.equal(Model.versionAtLeast("hyprmoncfg 1.11.1", "1.12.0"), false)
   assert.equal(Model.versionAtLeast("not installed", "1.12.0"), false)
   assert.equal(Model.versionAtLeast("hyprmoncfg 1.19.0-rc.0", "1.19.0-rc.1"), false)
@@ -2117,7 +2117,10 @@ test("an upgraded package whose daemon is still the old binary offers a restart"
   assert.equal(Model.daemonNeedsRestart("hyprmoncfg 1.19.0-rc.1", "1.19.0-rc.0"), true)
   assert.equal(Model.daemonNeedsRestart("hyprmoncfg 1.19.0-rc.1", "1.19.0-rc.1"), false)
 
-  // Nothing to say until both versions are known.
+  assert.equal(Model.daemonNeedsRestart("hyprmoncfg 1.24.1", "dev"), true)
+  assert.equal(Model.daemonNeedsRestart("hyprmoncfg 1.24.1", "unknown"), true)
+
+  // Wait for the version probe and daemon handshake.
   assert.equal(Model.daemonNeedsRestart("", "1.13.0"), false)
   assert.equal(Model.daemonNeedsRestart("hyprmoncfg 1.14.0", ""), false)
   assert.equal(Model.daemonNeedsRestart("hyprmoncfg dev", "1.13.0"), false)

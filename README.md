@@ -243,3 +243,19 @@ daemon or changing the desktop. Pass a shell source directory as its first
 argument to check another Omarchy version. The test covers 12, 14 and 20 px text,
 horizontal and vertical bars, one and two monitors, backend connection changes,
 and device scale factors 1, 1.25, 1.5 and 2.
+
+### Rotation and daemon compatibility
+
+Auto rotation pauses during the confirmation preview and resumes after Keep.
+Fixed built-in-panel rotations also keep touch aligned with a backend that
+includes the rotation fixes. For sensor mounting offsets, use
+`hyprmoncfg rotation calibrate` while holding the device upright, then set the
+correct fixed panel rotation before selecting Auto. Calibration is a backend CLI
+operation; the panel keeps its Auto and Lock controls. Older daemons reject the
+CLI calibration request through capability detection.
+
+An installed release paired with an unknown daemon build offers Restart daemon.
+If it still reports an unknown build, check `systemctl --user cat hyprmoncfgd`:
+a custom ExecStart may point at an old development binary. Development builds
+without a release version no longer satisfy the panel's minimum-version check;
+use a versioned build. Individual controls still require advertised capabilities.

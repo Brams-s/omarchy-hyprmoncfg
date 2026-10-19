@@ -24,6 +24,14 @@ BorderSurface {
   signal revertRequested()
   signal closeRequested()
 
+  readonly property bool hasAutoRotation: {
+    var outputs = root.layoutProfile ? root.layoutProfile.outputs || [] : []
+    for (var i = 0; i < outputs.length; i++) {
+      if (outputs[i].enabled && outputs[i].rotation_auto && !outputs[i].mirror_of) return true
+    }
+    return false
+  }
+
   readonly property real remaining: root.totalSeconds > 0
     ? Math.max(0, Math.min(1, root.seconds / root.totalSeconds)) : 0
 
@@ -102,7 +110,8 @@ BorderSurface {
           ? root.errorMessage
           : (root.actionError !== ""
             ? root.actionError
-            : root.profileName + " · the previous layout returns in " + root.seconds + " seconds"))
+            : root.profileName + " · the previous layout returns in " + root.seconds + " seconds"
+              + (root.hasAutoRotation ? "\nAuto rotation resumes after Keep." : "")))
       color: root.stage === "error" || root.actionError !== "" ? Commons.Color.urgent : Commons.Color.foreground
       opacity: 0.68
       font.family: Style.font.family

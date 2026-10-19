@@ -424,3 +424,10 @@ repository validation suite for implementation work, add meaningful state/IPC
 regressions, and capture actual compact/expanded before/after evidence. Record the
 panel/TUI parity status and physical hardware cases exercised. Do not test prose
 by asserting the wording of this design.
+
+Rotation follow-up, 2026-10-19: preview confirmation explains that Auto resumes
+after Keep. Sensor-upright calibration belongs to the backend CLI and is separate
+from the saved panel transform. Fixed built-in-panel rotations retain touch
+alignment with the companion backend fix. Unknown daemon builds do not satisfy
+release-version checks; an installed release offers a restart when the daemon
+reports a nonempty unknown version, with a reminder to check the service path.

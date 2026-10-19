@@ -321,7 +321,8 @@ Panel {
         id: "restart-service",
         icon: "󰑓",
         title: "Restart daemon",
-        subtitle: "Running " + root.runningVersion + ", installed " + root.installedRelease
+        subtitle: root.runningVersion === "" ? "Unknown daemon build; check service"
+          : "Running " + root.runningVersion + ", installed " + root.installedRelease
       })
     return rows
   }

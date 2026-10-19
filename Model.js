@@ -1362,16 +1362,17 @@ function releaseVersion(output) {
 
 // daemonNeedsRestart reports an upgraded package whose daemon is still the
 // previous binary. Installing runs as root and cannot restart a user service,
-// so the old daemon keeps serving profiles until someone restarts it.
+// so the old daemon keeps serving profiles until someone restarts it. A nonempty
+// unknown daemon build also needs attention when a release is installed; a custom
+// service path may still point at an old development binary.
 function daemonNeedsRestart(installedOutput, daemonVersion) {
   var installed = releaseVersion(installedOutput)
   var running = releaseVersion(daemonVersion)
-  return installed !== "" && running !== "" && installed !== running
+  return installed !== "" && String(daemonVersion || "").trim() !== "" && installed !== running
 }
 
 function versionAtLeast(output, minimum) {
   var text = String(output || "")
-  if (/\bdev\b/.test(text)) return true
 
   function parts(value) {
     var match = String(value || "").match(/v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?/)
