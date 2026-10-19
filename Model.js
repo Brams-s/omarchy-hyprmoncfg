@@ -1,8 +1,19 @@
-function installCommand() {
-  return "rm -f \"$XDG_RUNTIME_DIR/hyprmoncfg-panel-install.failed\" \"$XDG_RUNTIME_DIR/hyprmoncfg-panel-install.complete\"; status=0; if pacman -Q hyprmoncfg-bin >/dev/null 2>&1; then yay -S --needed --cleanafter hyprmoncfg-bin; elif pacman -Q hyprmoncfg >/dev/null 2>&1; then yay -S --needed --cleanafter hyprmoncfg; else omarchy pkg aur add hyprmoncfg-bin; fi && systemctl --user enable hyprmoncfgd.service && systemctl --user restart hyprmoncfgd.service && setsid -f gtk-launch hyprmoncfg-omarchy >/dev/null 2>&1 || status=$?; if (( status == 0 )); then : > \"$XDG_RUNTIME_DIR/hyprmoncfg-panel-install.complete\"; else printf '%s\\n' \"$status\" > \"$XDG_RUNTIME_DIR/hyprmoncfg-panel-install.failed\"; fi; (exit \"$status\")"
+// Package names are a closed set: never interpolate probe output into a command.
+function installedPackage(output) {
+  var names = String(output || "").trim().split(/\s+/)
+  if (names.indexOf("hyprmoncfg-git") >= 0) return "hyprmoncfg-git"
+  if (names.indexOf("hyprmoncfg-bin") >= 0) return "hyprmoncfg-bin"
+  return names.indexOf("hyprmoncfg") >= 0 ? "hyprmoncfg" : ""
 }
 
-function installProcessArgs() {
+function installCommand(switchToBinary) {
+  var packageCommand = switchToBinary === true
+    ? "if pacman -Q hyprmoncfg >/dev/null 2>&1 && ! pacman -Q hyprmoncfg-git >/dev/null 2>&1; then yay -S --needed --cleanafter hyprmoncfg-bin && pacman -Q hyprmoncfg-bin >/dev/null 2>&1; else printf '%s\\n' 'The source package is no longer installed. Reopen the panel to refresh.'; false; fi"
+    : "if pacman -Q hyprmoncfg-bin >/dev/null 2>&1; then yay -S --needed --cleanafter hyprmoncfg-bin; elif pacman -Q hyprmoncfg >/dev/null 2>&1; then yay -S --needed --cleanafter hyprmoncfg; elif pacman -Q hyprmoncfg-git >/dev/null 2>&1; then yay -S --needed --cleanafter hyprmoncfg-git; else omarchy pkg aur add hyprmoncfg-bin; fi"
+  return "rm -f \"$XDG_RUNTIME_DIR/hyprmoncfg-panel-install.failed\" \"$XDG_RUNTIME_DIR/hyprmoncfg-panel-install.complete\"; status=0; " + packageCommand + " && systemctl --user enable hyprmoncfgd.service && systemctl --user restart hyprmoncfgd.service && setsid -f gtk-launch hyprmoncfg-omarchy >/dev/null 2>&1 || status=$?; if (( status == 0 )); then : > \"$XDG_RUNTIME_DIR/hyprmoncfg-panel-install.complete\"; else printf '%s\\n' \"$status\" > \"$XDG_RUNTIME_DIR/hyprmoncfg-panel-install.failed\"; fi; (exit \"$status\")"
+}
+
+function installProcessArgs(switchToBinary) {
   return [
     "omarchy",
     "launch",
@@ -10,7 +21,7 @@ function installProcessArgs() {
     "terminal",
     "with",
     "presentation",
-    installCommand()
+    installCommand(switchToBinary)
   ]
 }
 
@@ -1891,6 +1902,7 @@ function compactPanelLayout(input) {
 if (typeof module !== "undefined") {
   module.exports = {
     layoutInspectorSpan: layoutInspectorSpan,
+    installedPackage: installedPackage,
     installCommand: installCommand,
     installProcessArgs: installProcessArgs,
     parseEnvelope: parseEnvelope,

@@ -20,6 +20,8 @@ Panel {
 
   property bool installed: false
   property string installedVersion: ""
+  property string installedPackage: ""
+  property bool installingBinary: false
   property bool compatible: false
   property bool checkingInstallation: true
   property bool installationStateKnown: false
@@ -305,6 +307,9 @@ Panel {
   readonly property bool daemonOutdated: root.backendConnected
     && root.documentReady
     && Model.daemonNeedsRestart(root.installedVersion, root.document ? root.document.version : "")
+  readonly property bool canSwitchToBinary: root.installedPackage === "hyprmoncfg"
+    && !root.installing && !root.serviceActionPending && !root.draftDirty
+    && !root.editPending && !root.editorPreviewBlocked && !root.daemonPreview
   // Every actionable row in one list, so their cursor positions cannot drift
   // apart from what is on screen.
   readonly property var actionRows: {
@@ -323,6 +328,13 @@ Panel {
         title: "Restart daemon",
         subtitle: root.runningVersion === "" ? "Unknown daemon build; check service"
           : "Running " + root.runningVersion + ", installed " + root.installedRelease
+      })
+    if (root.canSwitchToBinary)
+      rows.push({
+        id: "switch-to-binary",
+        icon: "󰏗",
+        title: "Switch to prebuilt package",
+        subtitle: "Faster updates, no compilation"
       })
     return rows
   }
@@ -552,6 +564,10 @@ Panel {
     root.startBrightnessSet(connector, percent)
   }
 
+  function checkPackage() {
+    if (!packageProcess.running) packageProcess.running = true
+  }
+
   function checkInstallation() {
     if (whichProcess.running) return
     if (!root.installationStateKnown) root.checkingInstallation = true
@@ -573,11 +589,18 @@ Panel {
     enabledProcess.running = true
   }
 
-  function install() {
+  function switchToBinary() {
+    if (!root.canSwitchToBinary) return
+    root.install(true)
+  }
+
+  function install(switchToBinary) {
+    if (root.installing) return
     if (root.runtimeDir === "") {
       root.lastError = "Could not find the user runtime directory."
       return
     }
+    root.installingBinary = switchToBinary === true
     root.installing = true
     root.lastError = ""
     installPreparationProcess.command = ["rm", "-f", root.installFailurePath, root.installCompletePath]
@@ -1732,6 +1755,7 @@ Panel {
 
   function activateRow(id) {
     if (id === "restart-service") root.restartService()
+    else if (id === "switch-to-binary") root.switchToBinary()
   }
 
   Component.onCompleted: {
@@ -1825,10 +1849,19 @@ Panel {
   }
 
   Process {
+    id: packageProcess
+    command: ["sh", "-c", "pacman -Qq hyprmoncfg hyprmoncfg-bin hyprmoncfg-git 2>/dev/null"]
+    stdout: StdioCollector { id: packageOutput; waitForEnd: true }
+    // pacman returns nonzero for absent names even when another one is installed.
+    onExited: root.installedPackage = Model.installedPackage(packageOutput.text)
+  }
+
+  Process {
     id: whichProcess
     stdout: StdioCollector { id: versionOutput; waitForEnd: true }
     onExited: function(exitCode) {
       if (exitCode === 3 && root.installing) return
+      root.checkPackage()
 
       root.checkingInstallation = false
       root.installationStateKnown = true
@@ -1922,7 +1955,7 @@ Panel {
         root.lastError = "Could not prepare the hyprmoncfg update."
         return
       }
-      installerProcess.command = Model.installProcessArgs()
+      installerProcess.command = Model.installProcessArgs(root.installingBinary)
       // Release the overlay's keyboard focus before presenting a sudo prompt.
       root.close()
       Qt.callLater(function() { installerProcess.startDetached() })

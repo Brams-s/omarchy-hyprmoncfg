@@ -431,3 +431,12 @@ from the saved panel transform. Fixed built-in-panel rotations retain touch
 alignment with the companion backend fix. Unknown daemon builds do not satisfy
 release-version checks; an installed release offers a restart when the daemon
 reports a nonempty unknown version, with a reminder to check the service path.
+
+Package migration, 2026-10-19: fresh installs use the prebuilt `hyprmoncfg-bin`.
+The compact action list offers Switch to prebuilt package only for the installed
+`hyprmoncfg` source package, when no editor draft, preview, installation, or
+service operation is pending. Pointer and keyboard activation share the existing
+interactive terminal installer. Package replacement is verified before daemon
+restart; profiles are preserved. The action disappears after migration, with no
+persistent preference. Updates preserve `hyprmoncfg-git` and no migration is
+offered for development or unmanaged builds. There is no backend or IPC change.
