@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 
@@ -16,9 +17,9 @@ Column {
   property int previewIndex: -1
   property int baseSize: Style.font.baseSize
   property bool hasCursor: false
-  property color foreground: Color.foreground
+  property color foreground: Commons.Color.foreground
   property color dim: Qt.darker(foreground, 1.5)
-  property color accent: Color.accent
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
   readonly property alias dragging: slider.dragging
 

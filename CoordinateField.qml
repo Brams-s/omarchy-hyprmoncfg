@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 
@@ -16,8 +17,8 @@ Column {
   property bool hasCursor: false
   property bool resetVisible: false
   property string resetTooltip: "Reset to loaded profile value"
-  property color foreground: Color.popups.text
-  property color accent: Color.accent
+  property color foreground: Commons.Color.popups.text
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
   property alias input: coordinateInput
 

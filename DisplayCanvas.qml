@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 
@@ -32,9 +33,9 @@ BorderSurface {
   // Output key to a short note from the daemon's display health, such as
   // "No usable signal" or "Running without VRR". See Model.displayNotes.
   property var notes: ({})
-  property color foreground: Color.foreground
+  property color foreground: Commons.Color.foreground
   property color dim: Qt.darker(foreground, 1.5)
-  property color accent: Color.accent
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
   readonly property real stagePadding: detailed ? Style.space(14) : Style.space(3)
 
@@ -230,7 +231,7 @@ BorderSurface {
           id: bezelRect
           anchors.fill: parent
           radius: Math.min(Style.cornerRadius, Style.space(card.tiny ? 2 : 7))
-          color: Qt.tint(Color.background, Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.10))
+          color: Qt.tint(Commons.Color.background, Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.10))
           border.width: card.selected ? Math.max(2, Style.normalBorderWidth * 2) : 1
           border.color: card.selected ? root.accent : Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.30)
 
@@ -336,7 +337,7 @@ BorderSurface {
                 elide: Text.ElideRight
                 textFormat: Text.PlainText
                 text: String(modelData)
-                color: parent.strong ? Color.background : root.accent
+                color: parent.strong ? Commons.Color.background : root.accent
                 font.family: root.fontFamily
                 font.pixelSize: parent.strong ? Style.font.bodySmall : Style.font.caption
                 font.bold: true
@@ -452,13 +453,13 @@ BorderSurface {
         width: modelData.width
         height: modelData.height
         radius: Math.min(Style.cornerRadius, Style.space(4))
-        color: strong ? root.accent : Qt.tint(Color.background, Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.35))
+        color: strong ? root.accent : Qt.tint(Commons.Color.background, Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.35))
 
         Text {
           anchors.centerIn: parent
           textFormat: Text.PlainText
           text: String(ghost.modelData.id)
-          color: ghost.strong ? Color.background : root.accent
+          color: ghost.strong ? Commons.Color.background : root.accent
           font.family: root.fontFamily
           font.pixelSize: ghost.strong ? Style.font.bodySmall : Style.font.caption
           font.bold: true

@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // Direction B: Keep/Revert shows what is being kept. A miniature stage of the
@@ -28,8 +29,8 @@ BorderSurface {
 
   width: Style.space(480)
   height: content.implicitHeight + contentTopInset + contentBottomInset
-  color: Color.popups.background
-  borderSpec: Border.surfaceSpec("popups", "border", Color.accent, Math.max(1, Style.space(2)))
+  color: Commons.Color.popups.background
+  borderSpec: Border.surfaceSpec("popups", "border", Commons.Color.accent, Math.max(1, Style.space(2)))
   radius: Style.cornerRadius
   padding: Style.space(20)
 
@@ -50,8 +51,8 @@ BorderSurface {
       interactive: false
       detailed: true
       framed: true
-      foreground: Color.foreground
-      accent: Color.accent
+      foreground: Commons.Color.foreground
+      accent: Commons.Color.accent
     }
 
     Item {
@@ -71,7 +72,7 @@ BorderSurface {
             ? "Couldn’t preview this layout"
             : (root.saveOnCommit ? "Keep and save this layout?"
               : (root.draftApply ? "Keep this layout?" : "Keep this profile?")))
-        color: root.stage === "error" ? Color.urgent : Color.foreground
+        color: root.stage === "error" ? Commons.Color.urgent : Commons.Color.foreground
         font.family: Style.font.family
         font.pixelSize: Style.font.heading
         font.bold: true
@@ -85,7 +86,7 @@ BorderSurface {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         text: root.seconds + "s"
-        color: Color.accent
+        color: Commons.Color.accent
         font.family: Style.font.family
         font.pixelSize: Style.font.heading
         font.bold: true
@@ -102,7 +103,7 @@ BorderSurface {
           : (root.actionError !== ""
             ? root.actionError
             : root.profileName + " · the previous layout returns in " + root.seconds + " seconds"))
-      color: root.stage === "error" || root.actionError !== "" ? Color.urgent : Color.foreground
+      color: root.stage === "error" || root.actionError !== "" ? Commons.Color.urgent : Commons.Color.foreground
       opacity: 0.68
       font.family: Style.font.family
       font.pixelSize: Style.font.body
@@ -114,13 +115,13 @@ BorderSurface {
       width: parent.width
       height: Style.space(3)
       radius: height / 2
-      color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12)
+      color: Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g, Commons.Color.foreground.b, 0.12)
 
       Rectangle {
         width: parent.width * root.remaining
         height: parent.height
         radius: parent.radius
-        color: Color.accent
+        color: Commons.Color.accent
         Behavior on width { NumberAnimation { duration: 240 } }
       }
     }
@@ -136,7 +137,7 @@ BorderSurface {
         text: root.actionPending ? "Working…" : "Revert"
         bordered: true
         enabled: !root.actionPending
-        foreground: Color.foreground
+        foreground: Commons.Color.foreground
         fontFamily: Style.font.family
         onClicked: root.revertRequested()
       }
@@ -146,7 +147,7 @@ BorderSurface {
         selected: true
         bordered: true
         enabled: !root.actionPending
-        foreground: Color.foreground
+        foreground: Commons.Color.foreground
         fontFamily: Style.font.family
         onClicked: root.keepRequested()
       }
@@ -157,7 +158,7 @@ BorderSurface {
       anchors.right: parent.right
       text: "Close"
       bordered: true
-      foreground: Color.foreground
+      foreground: Commons.Color.foreground
       fontFamily: Style.font.family
       onClicked: root.closeRequested()
     }

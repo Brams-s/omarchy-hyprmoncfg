@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Io
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "FieldEdit.js" as FieldEdit
 
@@ -32,8 +33,8 @@ Item {
   // Invalid state; null allows any text.
   property var inputPattern: null
   property bool stepKeys: false
-  property color foreground: Color.foreground
-  property color accent: Color.accent
+  property color foreground: Commons.Color.foreground
+  property color accent: Commons.Color.accent
   property bool hasCursor: false
   property real horizontalPadding: Style.spacing.controlPaddingX
   property real verticalPadding: Style.spacing.inputPaddingY

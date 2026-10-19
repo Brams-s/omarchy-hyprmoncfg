@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // Dropdown for a KeyboardPanel. The menu is positioned in panel coordinates
@@ -17,10 +18,10 @@ Item {
   property var options: []
   property Item popupParent: null
   property bool ownerOpen: true
-  property color foreground: Color.popups.text
-  property color background: Color.popups.background
-  property color popupBorder: Color.popups.border
-  property color accent: Color.accent
+  property color foreground: Commons.Color.popups.text
+  property color background: Commons.Color.popups.background
+  property color popupBorder: Commons.Color.popups.border
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
   property int rowHeight: Style.spacing.controlHeight
   property int popupRowHeight: Style.spacing.popupRowHeight
@@ -35,7 +36,7 @@ Item {
   property string resetTooltip: "Reset to loaded profile value"
 
   readonly property var popupBorderSpec: Border.localOrSurfaceSpec(
-    "popups", "border", popupBorder, Color.popups.border, Style.normalBorderWidth)
+    "popups", "border", popupBorder, Commons.Color.popups.border, Style.normalBorderWidth)
   readonly property bool popupOpen: menu.opened
 
   signal changed(string value)

@@ -1,14 +1,15 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 Item {
   id: root
 
   property string page: "layout"
-  property color foreground: Color.foreground
-  property color background: Color.background
-  property color accent: Color.accent
+  property color foreground: Commons.Color.foreground
+  property color background: Commons.Color.background
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
 
   signal closeRequested()

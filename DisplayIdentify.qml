@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import qs.Commons
+import qs.Commons as Commons
 
 // Input-transparent cues, following the layer-shell approach reviewed in PR #18.
 // Owned by the persistent preview service, never by an individual bar instance.
@@ -32,8 +33,8 @@ Item {
         anchors.centerIn: parent
         width: Math.min(parent.width - Style.space(32), Style.space(480))
         height: labels.implicitHeight + Style.space(32)
-        color: Color.background
-        border.color: Color.accent
+        color: Commons.Color.background
+        border.color: Commons.Color.accent
         border.width: 3
         radius: Style.cornerRadius
         Column {
@@ -45,7 +46,7 @@ Item {
             textFormat: Text.PlainText
             width: parent.width
             text: modelData.summary.connector
-            color: Color.accent
+            color: Commons.Color.accent
             font.family: Style.font.family
             font.pixelSize: Style.space(32)
             font.bold: true
@@ -55,7 +56,7 @@ Item {
             textFormat: Text.PlainText
             width: parent.width
             text: modelData.summary.model
-            color: Color.foreground
+            color: Commons.Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.body
             wrapMode: Text.Wrap
@@ -69,7 +70,7 @@ Item {
               width: labels.width
               textFormat: Text.PlainText
               text: modelData
-              color: Color.foreground
+              color: Commons.Color.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.body
               wrapMode: Text.Wrap

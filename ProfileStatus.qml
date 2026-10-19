@@ -1,12 +1,13 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 
 Row {
   id: root
   property string title: ""
   property string subtitle: ""
   property string iconText: "󰍹"
-  property color foreground: Color.foreground
+  property color foreground: Commons.Color.foreground
   property color dim: Qt.darker(foreground, 1.5)
   property string fontFamily: Style.font.family
 

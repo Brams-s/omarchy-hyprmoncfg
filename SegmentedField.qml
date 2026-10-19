@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // A small closed set shown all at once, built on the shell's own ButtonGroup
@@ -35,8 +36,8 @@ Column {
   property string toggleLabel: ""
   property bool toggleChecked: false
   property bool toggleHasCursor: false
-  property color foreground: Color.popups.text
-  property color accent: Color.accent
+  property color foreground: Commons.Color.popups.text
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
   property real fontSize: Style.font.caption
 

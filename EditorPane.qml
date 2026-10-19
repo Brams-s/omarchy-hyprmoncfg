@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // Direction A: panes are flat sections in Omarchy's first-party vocabulary
@@ -13,9 +14,9 @@ BorderSurface {
   property string meta: ""
   property bool active: false
   property bool surface: false
-  property color foreground: Color.foreground
+  property color foreground: Commons.Color.foreground
   property color dim: Qt.darker(foreground, 1.5)
-  property color accent: Color.accent
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
   readonly property real inset: surface ? Style.space(10) : 0
 

@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 Column {
@@ -11,9 +12,9 @@ Column {
   property int value: 1
   property bool available: false
   property bool loading: false
-  property color foreground: Color.foreground
+  property color foreground: Commons.Color.foreground
   property color dim: Qt.darker(foreground, 1.5)
-  property color accent: Color.accent
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
 
   signal previewed(real value)

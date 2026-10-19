@@ -4,6 +4,7 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 import "IdentifyModel.js" as IdentifyModel
@@ -455,7 +456,7 @@ Item {
 
       Rectangle {
         anchors.fill: parent
-        color: Util.alpha(Color.background, 0.72)
+        color: Util.alpha(Commons.Color.background, 0.72)
       }
 
       // Consume every pointer press while the layout is awaiting a decision.
