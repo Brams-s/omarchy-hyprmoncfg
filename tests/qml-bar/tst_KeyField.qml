@@ -28,6 +28,24 @@ Rectangle {
     }
   }
 
+  // Disables itself while each edit is pending, as the panel's workspace and
+  // group counts do through editPending.
+  Component {
+    id: pendingStepperComponent
+    NumberStepper {
+      id: pendingStepper
+      fieldWidth: 200
+      from: 1
+      to: 50
+      value: 1
+      enabled: !pending
+      property bool pending: false
+      property var commits: []
+      onModified: function(v) { commits.push(v); value = v; pending = true; reply.start() }
+      Timer { id: reply; interval: 20; onTriggered: pendingStepper.pending = false }
+    }
+  }
+
   TestCase {
     name: "KeyField"
     when: windowShown
@@ -173,6 +191,20 @@ Rectangle {
       compare(stepper.field.text, "50")
       keyClick("x")
       compare(stepper.field.text, "50")
+    }
+
+    function test_click_that_disables_the_stepper_steps_once() {
+      var stepper = createTemporaryObject(pendingStepperComponent, stage)
+      verify(stepper !== null)
+      var field = stepper.field
+      var plusX = field.width - stepper.buttonWidth / 2
+      mousePress(field, plusX, field.height / 2)
+      wait(40)
+      mouseRelease(field, plusX, field.height / 2)
+      // Past the 300 ms repeat delay and several 100 ms repeats.
+      wait(800)
+      compare(stepper.commits.length, 1)
+      compare(stepper.value, 2)
     }
   }
 }

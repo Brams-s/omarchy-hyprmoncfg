@@ -105,9 +105,13 @@ Column {
       enabled: root.enabled
       // Wheel events fall through to the scrolling inspector.
       acceptedButtons: Qt.LeftButton
-      onPressed: { root.step(button.delta); repeatDelay.start() }
+      // The delay starts before the step so a step that disables the stepper
+      // (e.g. while an edit is pending) can stop it: disabling drops the
+      // press without released or canceled.
+      onPressed: { repeatDelay.start(); root.step(button.delta) }
       onReleased: { repeatDelay.stop(); repeat.stop() }
       onCanceled: { repeatDelay.stop(); repeat.stop() }
+      onEnabledChanged: if (!enabled) { repeatDelay.stop(); repeat.stop() }
     }
 
     Timer { id: repeatDelay; interval: 300; onTriggered: repeat.start() }
