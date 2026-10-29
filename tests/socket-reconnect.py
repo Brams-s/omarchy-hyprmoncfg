@@ -7,9 +7,9 @@ Uses an isolated offscreen shell; does not contact hyprmoncfgd or change display
 
 import os
 from pathlib import Path
-import resource
 import socket
 import subprocess
+import sys
 import tempfile
 import threading
 import unittest
@@ -24,10 +24,6 @@ def error_handler(filename):
         depth += (source[end] == "{") - (source[end] == "}")
         end += 1
     return source[start:end]
-
-
-def disable_cores():
-    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 
 
 class SocketReconnectTest(unittest.TestCase):
@@ -60,15 +56,24 @@ class SocketReconnectTest(unittest.TestCase):
 import Quickshell
 import Quickshell.Io
 Scope {
+  id: testRoot
+  property int received: 0
+  property int errors: 0
   Socket {
     id: backendSocket
     path: Quickshell.env("QS_TEST_SOCKET")
     connected: true
     parser: SplitParser {
       splitMarker: "\\n"
-      onRead: function(line) { console.log("SOCKET_TEST_DATA", line) }
+      onRead: function(line) {
+        if (line === "probe") testRoot.received++
+        console.log("SOCKET_TEST_DATA", line)
+      }
     }
-    onError: function(error) HANDLER
+    onError: function(error) {
+      testRoot.errors++
+      ;(function(error) HANDLER)(error)
+    }
   }
   Timer {
     interval: 100
@@ -76,27 +81,45 @@ Scope {
     running: !backendSocket.connected
     onTriggered: backendSocket.connected = true
   }
-  Timer { interval: 2500; running: true; onTriggered: Qt.quit() }
+  Timer {
+    interval: 20
+    repeat: true
+    running: true
+    onTriggered: {
+      if (testRoot.received >= 10 && testRoot.errors >= 10) {
+        console.log("SOCKET_TEST_COMPLETE")
+        Qt.quit()
+      }
+    }
+  }
 }
 '''.replace("HANDLER", error_handler(root / filename))
                     (path / "shell.qml").write_text(config)
                     thread = threading.Thread(target=peer)
                     thread.start()
                     try:
+                        # Set the core limit in a fresh interpreter, not preexec_fn:
+                        # this parent already has a running socket-peer thread.
                         result = subprocess.run(
-                            ["quickshell", "--no-color", "--path", str(path / "shell.qml")],
+                            [sys.executable, "-c",
+                             "import os, resource, sys; "
+                             "resource.setrlimit(resource.RLIMIT_CORE, (0, 0)); "
+                             "os.execvp(sys.argv[1], sys.argv[1:])",
+                             "quickshell", "--no-color", "--path", str(path / "shell.qml")],
                             env={**os.environ, "QT_QPA_PLATFORM": "offscreen",
                                  "QT_QPA_PLATFORMTHEME": "", "QT_QUICK_BACKEND": "software",
                                  "QS_DISABLE_CRASH_HANDLER": "1", "QS_TEST_SOCKET": str(path / "peer.sock"),
                                  "XDG_CACHE_HOME": str(path / "cache"), "XDG_STATE_HOME": str(path / "state")},
-                            preexec_fn=disable_cores, capture_output=True, text=True, timeout=8,
+                            capture_output=True, text=True, timeout=15,
                         )
                     finally:
                         stop.set()
                         thread.join(timeout=2)
+                        self.assertFalse(thread.is_alive(), "socket peer failed to stop")
                     log = result.stdout + result.stderr
                     self.assertEqual(result.returncode, 0, log)
                     self.assertFalse(peer_errors, peer_errors)
+                    self.assertIn("SOCKET_TEST_COMPLETE", log)
                     self.assertGreaterEqual(log.count("PeerClosedError"), 10, log)
                     self.assertGreaterEqual(log.count("SOCKET_TEST_DATA probe"), 10, log)
 
